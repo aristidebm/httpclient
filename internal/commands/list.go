@@ -3,7 +3,7 @@ package commands
 import (
 	"fmt"
 
-	"cdapi/internal/repl"
+	"httpclient/internal/repl"
 )
 
 type listCmd struct{}

@@ -3,7 +3,7 @@ package export
 import (
 	"encoding/json"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 )
 
 type JSONExporter struct{}

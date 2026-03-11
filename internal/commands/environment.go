@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"cdapi/internal/model"
-	"cdapi/internal/repl"
+	"httpclient/internal/model"
+	"httpclient/internal/repl"
 )
 
 type envCmd struct{}

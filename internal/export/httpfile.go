@@ -3,7 +3,7 @@ package export
 import (
 	"strings"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 )
 
 type HTTPFileExporter struct{}

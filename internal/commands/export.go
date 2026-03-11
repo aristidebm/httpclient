@@ -5,11 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"cdapi/internal/export"
-	"cdapi/internal/model"
-	"cdapi/internal/repl"
+	"httpclient/internal/export"
+	"httpclient/internal/model"
+	"httpclient/internal/repl"
 
-	_ "cdapi/internal/export"
+	_ "httpclient/internal/export"
 )
 
 type exportCmd struct{}

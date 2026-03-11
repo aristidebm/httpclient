@@ -7,12 +7,12 @@ import (
 func BuildPrompt(ctx *ShellContext) string {
 	session := ctx.Tree.Current()
 	if session == nil {
-		return color.BlueString("[cdapi] › ")
+		return color.BlueString("[httpclient] › ")
 	}
 
 	env := ctx.Tree.CurrentEnv()
 	if env == nil {
-		return color.GreenString("[cdapi] › ")
+		return color.GreenString("[httpclient] › ")
 	}
 
 	user := ""
@@ -23,12 +23,13 @@ func BuildPrompt(ctx *ShellContext) string {
 		user = "user"
 	}
 
-	cdapi := color.New(color.FgHiBlack).Sprint("cdapi")
+	// httpclient := color.New(color.FgHiBlack).Sprint("httpclient")
 	envPart := color.New(color.FgCyan).Sprintf("%s@%s", user, env.Name)
 	sessionPart := color.New(color.FgGreen).Sprint(session.Name)
 	prompt := color.New(color.FgHiBlack).Sprint("› ")
 
-	return "[cdapi : " + cdapi + " : " + envPart + " : " + sessionPart + "] " + prompt
+	// return "[httpclient : " + httpclient + " : " + envPart + " : " + sessionPart + "] " + prompt
+	return "[httpclient : " + envPart + " : " + sessionPart + "] " + prompt
 }
 
 func toString(v any) string {

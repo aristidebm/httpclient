@@ -1,4 +1,4 @@
-module cdapi
+module httpclient
 
 go 1.24.0
 

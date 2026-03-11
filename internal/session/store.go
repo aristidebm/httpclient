@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 )
 
 var (
-	ConfigDir        = "~/.cdapi"
-	EnvironmentsFile = "~/.cdapi/environments.json"
-	SessionsFile     = "~/.cdapi/sessions.json"
-	ConfigFile       = "~/.cdapi/config.toml"
+	ConfigDir        = "~/.httpclient"
+	EnvironmentsFile = "~/.httpclient/environments.json"
+	SessionsFile     = "~/.httpclient/sessions.json"
+	ConfigFile       = "~/.httpclient/config.toml"
 )
 
 func expandPath(path string) (string, error) {

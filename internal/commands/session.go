@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"cdapi/internal/model"
-	"cdapi/internal/repl"
+	"httpclient/internal/model"
+	"httpclient/internal/repl"
 )
 
 type sessionCmd struct{}

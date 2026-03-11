@@ -25,7 +25,7 @@ func LoadConfig() (*Config, error) {
 			return &Config{
 				DefaultEnv:    "local",
 				DefaultEditor: "",
-				HistoryFile:   "~/.cdapi/history",
+				HistoryFile:   "~/.httpclient/history",
 			}, nil
 		}
 		return nil, err
@@ -37,7 +37,7 @@ func LoadConfig() (*Config, error) {
 	}
 
 	if cfg.HistoryFile == "" {
-		cfg.HistoryFile = "~/.cdapi/history"
+		cfg.HistoryFile = "~/.httpclient/history"
 	}
 
 	return &cfg, nil

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"cdapi/internal/executor"
-	"cdapi/internal/model"
-	"cdapi/internal/repl"
+	"httpclient/internal/executor"
+	"httpclient/internal/model"
+	"httpclient/internal/repl"
 )
 
 var acceptShortcuts = map[string]string{
@@ -264,7 +264,7 @@ func isTextResponse(resp *model.Response) bool {
 }
 
 func saveBinaryResponse(resp *model.Response, reqID string) error {
-	filename := fmt.Sprintf("cdapi_%s_%d", reqID, time.Now().Unix())
+	filename := fmt.Sprintf("httpclient_%s_%d", reqID, time.Now().Unix())
 	if ct := resp.Headers["Content-Type"]; strings.Contains(ct, "pdf") {
 		filename += ".pdf"
 	} else if strings.Contains(ct, "zip") {

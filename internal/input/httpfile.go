@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 )
 
 func ParseHTTPFile(data []byte) ([]*model.Request, error) {

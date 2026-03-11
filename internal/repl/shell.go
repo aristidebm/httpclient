@@ -6,9 +6,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"cdapi/internal/executor"
-	"cdapi/internal/model"
-	"cdapi/internal/session"
+	"httpclient/internal/executor"
+	"httpclient/internal/model"
+	"httpclient/internal/session"
 	"github.com/chzyer/readline"
 	openapi3 "github.com/getkin/kin-openapi/openapi3"
 )

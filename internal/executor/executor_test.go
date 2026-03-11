@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 )
 
 func TestClientExecuteSuccess(t *testing.T) {

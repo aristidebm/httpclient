@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 )
 
 func ParseCurl(data []byte) ([]*model.Request, error) {

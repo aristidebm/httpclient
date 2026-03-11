@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 )
 
 type HARExporter struct{}
@@ -69,7 +69,7 @@ func (e *HARExporter) Export(session *model.Session, env *model.Environment) ([]
 		"log": map[string]any{
 			"version": "1.2",
 			"creator": map[string]any{
-				"name":    "cdapi",
+				"name":    "httpclient",
 				"version": "1.0",
 			},
 			"entries": entries,

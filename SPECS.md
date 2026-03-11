@@ -1,4 +1,4 @@
-# cdapi — Go Implementation Plan
+# httpclient — Go Implementation Plan
 
 > This document is a complete implementation guide for a coding agent.
 > Work through phases sequentially. Each phase has acceptance criteria —
@@ -9,7 +9,7 @@
 ## Project Bootstrap
 
 ```
-cdapi/
+httpclient/
 ├── main.go
 ├── go.mod
 ├── go.sum
@@ -147,13 +147,13 @@ gopkg.in/yaml.v3                    v3.0.1
 - [ ] Define storage paths:
   ```go
   const (
-      ConfigDir        = "~/.cdapi"
-      EnvironmentsFile = "~/.cdapi/environments.json"
-      SessionsFile     = "~/.cdapi/sessions.json"
-      ConfigFile       = "~/.cdapi/config.toml"
+      ConfigDir        = "~/.httpclient"
+      EnvironmentsFile = "~/.httpclient/environments.json"
+      SessionsFile     = "~/.httpclient/sessions.json"
+      ConfigFile       = "~/.httpclient/config.toml"
   )
   ```
-- [ ] Expand `~` using `os.UserHomeDir()`, create `~/.cdapi/` if it does not exist
+- [ ] Expand `~` using `os.UserHomeDir()`, create `~/.httpclient/` if it does not exist
 - [ ] `func SaveTree(tree *model.SessionTree) error` — marshals full tree to `sessions.json`
 - [ ] `func LoadTree() (*model.SessionTree, error)` — unmarshals; on first run returns `NewSessionTree()`
 - [ ] `func SaveEnvironments(envs map[string]*model.Environment) error`
@@ -245,13 +245,13 @@ gopkg.in/yaml.v3                    v3.0.1
 
 ### 4.2 — `internal/repl/prompt.go`
 
-- [ ] Build prompt string: `[cdapi : {user}@{env} : {session}] › `
+- [ ] Build prompt string: `[httpclient : {user}@{env} : {session}] › `
 - [ ] Color coding:
-  - `cdapi` — dim grey
+  - `httpclient` — dim grey
   - `{user}@{env}` — cyan
   - `{session}` — green
   - `›` — grey
-- [ ] When no environment bound yet, show: `[cdapi] › ` in blue
+- [ ] When no environment bound yet, show: `[httpclient] › ` in blue
 
 ### 4.3 — `internal/repl/dispatch.go`
 
@@ -297,7 +297,7 @@ gopkg.in/yaml.v3                    v3.0.1
 - [ ] Shell starts, shows prompt, accepts `/help`, `/exit`
 - [ ] Unknown command shows helpful error, does not crash
 - [ ] Tab completes `/` prefixed command names
-- [ ] History persists across restarts (`~/.cdapi/history`)
+- [ ] History persists across restarts (`~/.httpclient/history`)
 
 ---
 
@@ -494,7 +494,7 @@ type Exporter interface {
 ### 8.4 — HAR exporter — `internal/export/har.go`
 
 - [ ] Produce valid [HAR 1.2](http://www.softwareishard.com/blog/har-12-spec/) JSON
-- [ ] `log.creator.name` = `"cdapi"`
+- [ ] `log.creator.name` = `"httpclient"`
 - [ ] Populate `timings.send`, `timings.wait`, `timings.receive` from `req.Duration` (distribute evenly if breakdown not available)
 - [ ] `startedDateTime` from `req.ExecutedAt` in RFC 3339 format
 - [ ] Include response `content.mimeType` and `content.text`
@@ -581,7 +581,7 @@ type Exporter interface {
 ### 9.2 — `/update` — `internal/commands/update.go`
 
 - [ ] `/update [var-name]` — open `ctx.LastData` (or named variable) in `$VISUAL` / `$EDITOR` / `nano` / `vi`
-- [ ] Write content to a temp file (`/tmp/cdapi_*.json`)
+- [ ] Write content to a temp file (`/tmp/httpclient_*.json`)
 - [ ] Wait for editor to exit
 - [ ] If mtime unchanged → print "No changes" and return
 - [ ] Try to parse edited content as JSON; if valid → store as `map[string]any`; otherwise store as raw string
@@ -633,7 +633,7 @@ type Exporter interface {
 ### 9.8 — `/save` — `internal/commands/save.go`
 
 - [ ] `/save [filename]` — save binary response body of last request to disk
-- [ ] If no filename → extract from `Content-Disposition` header; fallback to `cdapi_{timestamp}{ext}`
+- [ ] If no filename → extract from `Content-Disposition` header; fallback to `httpclient_{timestamp}{ext}`
 - [ ] Print saved path on success
 
 ### 9.9 — `/info` — `internal/commands/info.go`
@@ -670,7 +670,7 @@ type Exporter interface {
 
 ## Phase 10 — CLI One-shot Mode
 
-**Goal:** `cdapi /get <url> -u user@env` works without entering the shell, matching the Python CLI mode.
+**Goal:** `httpclient /get <url> -u user@env` works without entering the shell, matching the Python CLI mode.
 
 ### 10.1 — `cmd/root.go`
 
@@ -690,8 +690,8 @@ type Exporter interface {
 - [ ] Binary responses auto-saved in one-shot mode (same as Python CLI)
 
 **Phase 10 acceptance criteria:**
-- [ ] `cdapi /get https://httpbin.org/get` prints JSON response and exits
-- [ ] `cdapi /post https://httpbin.org/post -d name:test` sends body and exits
+- [ ] `httpclient /get https://httpbin.org/get` prints JSON response and exits
+- [ ] `httpclient /post https://httpbin.org/post -d name:test` sends body and exits
 - [ ] Exit code 0 on 2xx, 1 on error or non-2xx
 
 ---
@@ -714,11 +714,11 @@ type Exporter interface {
 
 ### 11.3 — Config file
 
-- [ ] `~/.cdapi/config.toml` supports:
+- [ ] `~/.httpclient/config.toml` supports:
   ```toml
   default_env    = "beta"
   default_editor = "nano"
-  history_file   = "~/.cdapi/history"
+  history_file   = "~/.httpclient/history"
   pager          = "less"
   ```
 - [ ] Environment pre-population: if a TOML `[environments]` block is present, load them on first run

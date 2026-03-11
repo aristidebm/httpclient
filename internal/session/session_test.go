@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 )
 
 func TestSaveAndLoadTree(t *testing.T) {
@@ -163,7 +163,7 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	cfg := &Config{
 		DefaultEnv:    "beta",
 		DefaultEditor: "nano",
-		HistoryFile:   "~/.cdapi/history",
+		HistoryFile:   "~/.httpclient/history",
 	}
 
 	err := SaveConfig(cfg)

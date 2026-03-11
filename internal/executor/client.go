@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 )
 
 var ErrTimeout = errors.New("timeout")

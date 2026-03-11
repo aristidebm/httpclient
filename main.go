@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	_ "cdapi/internal/commands"
-	"cdapi/internal/repl"
+	_ "httpclient/internal/commands"
+	"httpclient/internal/repl"
 )
 
 func main() {

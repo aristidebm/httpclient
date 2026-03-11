@@ -3,7 +3,7 @@ package export
 import (
 	"fmt"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 )
 
 type Exporter interface {

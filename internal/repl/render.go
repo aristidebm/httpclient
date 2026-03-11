@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 	"github.com/fatih/color"
 )
 

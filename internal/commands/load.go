@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"cdapi/internal/input"
-	"cdapi/internal/repl"
+	"httpclient/internal/input"
+	"httpclient/internal/repl"
 )
 
 type loadCmd struct{}

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 )
 
 func ApplyAuth(req *http.Request, env *model.Environment) {

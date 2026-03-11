@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"cdapi/internal/repl"
+	"httpclient/internal/repl"
 	"github.com/itchyny/gojq"
 )
 
@@ -115,7 +115,7 @@ func (c *updateCmd) Run(ctx *repl.ShellContext, args []string) error {
 	}
 
 	// Write to temp file
-	tmpFile := fmt.Sprintf("/tmp/cdapi_update_%d.json", os.Getpid())
+	tmpFile := fmt.Sprintf("/tmp/httpclient_update_%d.json", os.Getpid())
 	defer os.Remove(tmpFile)
 
 	var content []byte
@@ -199,7 +199,7 @@ func (c *editCmd) Run(ctx *repl.ShellContext, args []string) error {
 	}
 
 	// Write to temp file
-	tmpFile := fmt.Sprintf("/tmp/cdapi_edit_%s.json", varName)
+	tmpFile := fmt.Sprintf("/tmp/httpclient_edit_%s.json", varName)
 	defer os.Remove(tmpFile)
 
 	var content []byte
@@ -520,7 +520,7 @@ func (c *saveCmd) Run(ctx *repl.ShellContext, args []string) error {
 		case strings.Contains(ct, "xml"):
 			ext = ".xml"
 		}
-		filename = fmt.Sprintf("cdapi_%d%s", time.Now().Unix(), ext)
+		filename = fmt.Sprintf("httpclient_%d%s", time.Now().Unix(), ext)
 	}
 
 	err := os.WriteFile(filename, ctx.LastResp.RawBody, 0644)

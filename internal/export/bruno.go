@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"cdapi/internal/model"
+	"httpclient/internal/model"
 )
 
 type BrunoExporter struct{}
