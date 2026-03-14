@@ -117,10 +117,23 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return showOpenAPIDoc(ctx, h.method, endpoint)
 	}
 
-	// Convert ctx.Vars to map[string]any for ResolveVars
+	// Convert ctx.Vars and session.Vars to map[string]any for ResolveVars
 	shellVars := make(map[string]any)
 	for k, v := range ctx.Vars {
 		shellVars[k] = v.Value
+	}
+	// Also include session vars
+	session := ctx.Tree.Current()
+	if session != nil && session.Vars != nil {
+		for k, v := range session.Vars {
+			shellVars[k] = v.Value
+		}
+	}
+	// Also include env vars
+	if env != nil && env.Vars != nil {
+		for k, v := range env.Vars {
+			shellVars[k] = v.Value
+		}
 	}
 
 	req := &model.Request{
@@ -147,7 +160,8 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 	for _, hdr := range headers {
 		parts := strings.SplitN(hdr, ":", 2)
 		if len(parts) == 2 {
-			req.Headers[parts[0]] = parts[1]
+			resolved, _ := model.ResolveVars(parts[1], shellVars)
+			req.Headers[parts[0]] = resolved
 		}
 	}
 
@@ -224,7 +238,7 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return err
 	}
 
-	session := ctx.Tree.Current()
+	session = ctx.Tree.Current()
 	session.AddRequest(req)
 
 	ctx.LastResp = req.Response

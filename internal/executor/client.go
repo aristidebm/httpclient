@@ -103,7 +103,8 @@ func (c *Client) Execute(req *model.Request, env *model.Environment) error {
 	}
 
 	for k, v := range mergedHeaders {
-		httpReq.Header.Set(k, v)
+		resolvedV, _ := model.ResolveVars(v, varLayers...)
+		httpReq.Header.Set(k, resolvedV)
 	}
 
 	if req.ContentType != "" && httpReq.Header.Get("Content-Type") == "" {

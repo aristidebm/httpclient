@@ -40,7 +40,7 @@ func (v Variables) Set(key string, value any, scope VarScope) {
 			Name:    key,
 			Value:   value,
 			Scope:   scope,
-			Public:  false,
+			Public:  true,
 			Created: now,
 			Updated: now,
 		}

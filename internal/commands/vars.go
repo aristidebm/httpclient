@@ -218,7 +218,6 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string, isPub
 			session.Vars = make(model.Variables)
 		}
 		session.Vars.Set(key, value, model.VarScopeSession)
-		session.Vars.SetPublic(key, isPublic)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (session)", key, value))
 
 	case "env":
@@ -230,7 +229,6 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string, isPub
 			env.Vars = make(model.Variables)
 		}
 		env.Vars.Set(key, value, model.VarScopeEnv)
-		env.Vars.SetPublic(key, isPublic)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (env: %s)", key, value, env.Name))
 
 	case "shell":
@@ -238,7 +236,6 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string, isPub
 			ctx.Vars = make(model.Variables)
 		}
 		ctx.Vars.Set(key, value, model.VarScopeShell)
-		ctx.Vars.SetPublic(key, isPublic)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (shell)", key, value))
 	}
 
