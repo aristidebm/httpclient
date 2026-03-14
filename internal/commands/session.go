@@ -153,6 +153,7 @@ func sessionBranch(ctx *repl.ShellContext, args []string) error {
 		Requests:        []*model.Request{},
 		HeaderOverrides: make(map[string]string),
 		VarOverrides:    make(map[string]any),
+		OpenAPISpec:     current.OpenAPISpec, // Inherit OpenAPI spec from parent
 		CreatedAt:       time.Now(),
 	}
 
