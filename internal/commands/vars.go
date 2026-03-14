@@ -70,29 +70,77 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 }
 
 func (c *varsCmd) listVars(ctx *repl.ShellContext, scope string) error {
-	fmt.Println("=== Shell Variables ===")
-	if len(ctx.Vars) == 0 {
-		fmt.Println("  (none)")
-	} else {
-		for k, v := range ctx.Vars {
-			fmt.Printf("  %s = %v\n", k, v)
-		}
+	type varEntry struct {
+		key    string
+		value  string
+		scope  string
+		active bool
 	}
 
+	var entries []varEntry
+
+	// Shell vars
+	for k, v := range ctx.Vars {
+		entries = append(entries, varEntry{
+			key:    k,
+			value:  fmt.Sprintf("%v", v),
+			scope:  "shell",
+			active: true,
+		})
+	}
+
+	// Environment vars
 	env := ctx.Tree.CurrentEnv()
-	if env != nil && len(env.Vars) > 0 {
-		fmt.Printf("\n=== Environment Variables (%s) ===\n", env.Name)
+	envVars := make(map[string]string)
+	if env != nil {
 		for k, v := range env.Vars {
-			fmt.Printf("  %s = %v\n", k, v)
+			key := k
+			value := fmt.Sprintf("%v", v)
+			envVars[key] = value
+
+			// Check if session overrides
+			active := true
+			session := ctx.Tree.Current()
+			if session != nil {
+				if _, ok := session.VarOverrides[k]; ok {
+					active = false
+				}
+			}
+
+			entries = append(entries, varEntry{
+				key:    key,
+				value:  value,
+				scope:  "env:" + env.Name,
+				active: active,
+			})
 		}
 	}
 
+	// Session vars
 	session := ctx.Tree.Current()
-	if session != nil && len(session.VarOverrides) > 0 {
-		fmt.Printf("\n=== Session Variables (%s) ===\n", session.Name)
+	if session != nil {
 		for k, v := range session.VarOverrides {
-			fmt.Printf("  %s = %v\n", k, v)
+			value := fmt.Sprintf("%v", v)
+			entries = append(entries, varEntry{
+				key:    k,
+				value:  value,
+				scope:  "session",
+				active: true,
+			})
 		}
+	}
+
+	// Print header
+	fmt.Println("KEY             VALUE                          SCOPE")
+	fmt.Println("───────────────────────────────────────────────────────────────")
+
+	// Print all entries
+	for _, e := range entries {
+		scopeDisplay := e.scope
+		if !e.active {
+			scopeDisplay += " (shadowed)"
+		}
+		fmt.Printf("%-15s %-30s %s\n", e.key, e.value, scopeDisplay)
 	}
 
 	return nil
