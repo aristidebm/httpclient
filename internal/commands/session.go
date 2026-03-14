@@ -148,7 +148,7 @@ func sessionSwitch(ctx *repl.ShellContext, args []string) error {
 		prevID := ctx.Tree.PreviousID
 		ctx.Tree.PreviousID = ctx.Tree.CurrentID
 		ctx.Tree.CurrentID = prevID
-		repl.PrintSuccess(fmt.Sprintf("Switched to previous session %q", ctx.Tree.Current()))
+		repl.PrintSuccess(fmt.Sprintf("Switched to previous session %q", ctx.Tree.Current().Name))
 		return nil
 	}
 
