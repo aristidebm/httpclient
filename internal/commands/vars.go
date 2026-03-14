@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"flag"
 	"fmt"
 	"strings"
 
@@ -17,39 +16,30 @@ func (c *varsCmd) Help() string {
 }
 
 func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
-	// Parse flags first (before subcommand)
-	fs := flag.NewFlagSet("vars", flag.ContinueOnError)
-	_ = fs.Bool("session", false, "Session scope (default)") // kept for completeness
-	envScope := fs.Bool("env", false, "Environment scope")
-	shellScope := fs.Bool("shell", false, "Shell scope")
-	fs.Parse(args)
-
-	// Determine scope from flags
+	// Manually parse flags (before subcommand)
 	scope := ""
-	if *envScope {
-		scope = "env"
-	} else if *shellScope {
-		scope = "shell"
-	}
+	rem := args
 
-	// Get remaining args after flags
-	var remaining []string
-	for i, arg := range args {
-		if !strings.HasPrefix(arg, "-") || arg == "-" {
-			remaining = args[i:]
-			break
+	for len(rem) > 0 && strings.HasPrefix(rem[0], "-") {
+		flag := rem[0]
+		if flag == "--session" || flag == "-session" {
+			scope = "session"
+		} else if flag == "--env" || flag == "-env" {
+			scope = "env"
+		} else if flag == "--shell" || flag == "-shell" {
+			scope = "shell"
+		} else {
+			break // Unknown flag, stop parsing
 		}
-	}
-	if remaining == nil {
-		remaining = []string{}
+		rem = rem[1:]
 	}
 
-	// If no subcommand, just list (show all)
-	if len(remaining) == 0 {
-		return c.listVars(ctx, "")
+	// If no remaining args, just list
+	if len(rem) == 0 {
+		return c.listVars(ctx, scope)
 	}
 
-	subcmd := remaining[0]
+	subcmd := rem[0]
 	key := ""
 	value := ""
 
@@ -58,11 +48,11 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return c.listVars(ctx, scope)
 
 	case "set", "s":
-		if len(remaining) < 3 {
+		if len(rem) < 3 {
 			return fmt.Errorf("usage: /vars set [--session|--env|--shell] <key> <value>")
 		}
-		key = remaining[1]
-		value = remaining[2]
+		key = rem[1]
+		value = rem[2]
 		// Use scope from flag, or default to session if not specified
 		if scope == "" {
 			scope = "session"
@@ -70,20 +60,20 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return c.setVar(ctx, scope, key, value)
 
 	case "unset", "delete", "u":
-		if len(remaining) < 2 {
+		if len(rem) < 2 {
 			return fmt.Errorf("usage: /vars unset [--session|--env|--shell] <key>")
 		}
-		key = remaining[1]
+		key = rem[1]
 		if scope == "" {
 			scope = "session"
 		}
 		return c.unsetVar(ctx, scope, key)
 
 	case "get", "g":
-		if len(remaining) < 2 {
+		if len(rem) < 2 {
 			return fmt.Errorf("usage: /vars get <key>")
 		}
-		key = remaining[1]
+		key = rem[1]
 		return c.getVar(ctx, key)
 
 	default:
