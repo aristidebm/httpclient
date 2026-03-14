@@ -140,8 +140,21 @@ func sessionSwitch(ctx *repl.ShellContext, args []string) error {
 
 	name := args[0]
 
+	// Handle "-" to switch to previous session
+	if name == "-" {
+		if ctx.Tree.PreviousID == "" || ctx.Tree.Sessions[ctx.Tree.PreviousID] == nil {
+			return fmt.Errorf("no previous session")
+		}
+		prevID := ctx.Tree.PreviousID
+		ctx.Tree.PreviousID = ctx.Tree.CurrentID
+		ctx.Tree.CurrentID = prevID
+		repl.PrintSuccess(fmt.Sprintf("Switched to previous session %q", ctx.Tree.Current()))
+		return nil
+	}
+
 	for id, s := range ctx.Tree.Sessions {
 		if s.Name == name {
+			ctx.Tree.PreviousID = ctx.Tree.CurrentID
 			ctx.Tree.CurrentID = id
 			repl.PrintSuccess(fmt.Sprintf("Switched to session %q", name))
 			return nil

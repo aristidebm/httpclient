@@ -5,6 +5,7 @@ import "time"
 type SessionTree struct {
 	Sessions     map[string]*Session
 	CurrentID    string
+	PreviousID   string
 	Environments map[string]*Environment
 }
 
