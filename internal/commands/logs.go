@@ -27,6 +27,8 @@ func (c *logsCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return logsClear(ctx)
 	case "remove":
 		return logsRemove(ctx, args[1:])
+	case "show":
+		return logsShow(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown logs subcommand: %s", subcmd)
 	}
@@ -56,6 +58,38 @@ func logsList(ctx *repl.ShellContext) error {
 			created = req.ExecutedAt.Format("2006-01-02T15:04:05Z07:00")
 		}
 		fmt.Printf("%-4s %-6s %-8s %-28s %s\n", req.ID, method, status, created, req.URL)
+	}
+
+	return nil
+}
+
+func logsShow(ctx *repl.ShellContext, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: /logs show <req-id>")
+	}
+
+	reqID := args[0]
+	session := ctx.Tree.Current()
+	if session == nil {
+		return fmt.Errorf("no current session")
+	}
+
+	req, ok := session.GetRequest(reqID)
+	if !ok {
+		return fmt.Errorf("request %q not found", reqID)
+	}
+
+	fmt.Printf("ID:     %s\n", req.ID)
+	fmt.Printf("Method: %s\n", req.Method)
+	fmt.Printf("URL:    %s\n", req.URL)
+	if req.Response != nil {
+		fmt.Printf("Status: %s\n", req.Response.Status)
+	}
+	if !req.ExecutedAt.IsZero() {
+		fmt.Printf("Time:   %s\n", req.ExecutedAt.Format("2006-01-02T15:04:05Z07:00"))
+	}
+	if req.Duration > 0 {
+		fmt.Printf("Duration: %v\n", req.Duration)
 	}
 
 	return nil
