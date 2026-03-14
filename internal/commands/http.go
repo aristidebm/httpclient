@@ -178,6 +178,15 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 				continue
 			}
 
+			// If data starts with { or [, treat as raw JSON body
+			trimmed := strings.TrimSpace(d)
+			if len(trimmed) > 0 && (trimmed[0] == '{' || trimmed[0] == '[') {
+				resolved, _ := model.ResolveVars(d, shellVars)
+				req.Body = []byte(resolved)
+				isSplat = true
+				continue
+			}
+
 			if strings.Contains(d, ":") {
 				parts := strings.SplitN(d, ":", 2)
 				bodyMap[parts[0]] = parts[1]
