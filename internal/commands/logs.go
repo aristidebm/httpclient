@@ -49,7 +49,7 @@ func logsList(ctx *repl.ShellContext) error {
 		method := req.Method
 		status := ""
 		if req.Response != nil {
-			status = fmt.Sprintf("%d %s", req.Response.StatusCode, req.Response.Status)
+			status = req.Response.Status
 		}
 		created := ""
 		if !req.ExecutedAt.IsZero() {
