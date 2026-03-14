@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"httpclient/internal/input"
+	"httpclient/internal/model"
 	"httpclient/internal/repl"
 )
 
@@ -18,7 +18,8 @@ func (c *listCmd) Aliases() []string { return nil }
 func (c *listCmd) Help() string      { return "List routes from loaded OpenAPI spec: /list [filter]" }
 
 func (c *listCmd) Run(ctx *repl.ShellContext, args []string) error {
-	if ctx.Spec == nil {
+	spec := ctx.CurrentSpec()
+	if spec == nil {
 		fmt.Println("No spec loaded. Use /load <url-or-file>")
 		return nil
 	}
@@ -28,9 +29,9 @@ func (c *listCmd) Run(ctx *repl.ShellContext, args []string) error {
 		filter = strings.ToLower(args[0])
 	}
 
-	routes := ctx.Spec.Routes
+	routes := spec.Routes
 	if filter != "" {
-		var filtered []input.Route
+		var filtered []model.Route
 		for _, r := range routes {
 			pathMatch := strings.Contains(strings.ToLower(r.Path), filter)
 			sumMatch := strings.Contains(strings.ToLower(r.Summary), filter)
@@ -49,7 +50,7 @@ func (c *listCmd) Run(ctx *repl.ShellContext, args []string) error {
 	}
 
 	// Group by tag
-	tagGroups := make(map[string][]input.Route)
+	tagGroups := make(map[string][]model.Route)
 	var tags []string
 	for _, r := range routes {
 		if len(r.Tags) == 0 {

@@ -59,8 +59,7 @@ func (c *loadCmd) Run(ctx *repl.ShellContext, args []string) error {
 			return fmt.Errorf("failed to load OpenAPI: %w", err)
 		}
 
-		ctx.Spec = spec
-		ctx.OpenAPI = nil // Keep for compatibility
+		ctx.SetSpec(spec)
 
 		repl.PrintSuccess(fmt.Sprintf("Loaded OpenAPI spec: %s (version: %s)", spec.Title, spec.Version))
 		fmt.Printf("Found %d routes\n", len(spec.Routes))

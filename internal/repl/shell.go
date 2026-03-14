@@ -18,11 +18,46 @@ type ShellContext struct {
 	Tree      *model.SessionTree
 	Executor  *executor.Client
 	OpenAPI   *openapi3.T
-	Spec      *input.Spec
 	Vars      map[string]any
 	LastResp  *model.Response
 	LastData  any
 	LastReqID string
+}
+
+func (ctx *ShellContext) CurrentSpec() *model.OpenAPISpec {
+	session := ctx.Tree.Current()
+	if session == nil {
+		return nil
+	}
+	return session.OpenAPISpec
+}
+
+func (ctx *ShellContext) SetSpec(spec *input.Spec) {
+	session := ctx.Tree.Current()
+	if session == nil {
+		return
+	}
+	session.OpenAPISpec = &model.OpenAPISpec{
+		Title:   spec.Title,
+		Version: spec.Version,
+		Routes:  make([]model.Route, len(spec.Routes)),
+	}
+	for i, r := range spec.Routes {
+		session.OpenAPISpec.Routes[i] = model.Route{
+			Method:  r.Method,
+			Path:    r.Path,
+			Summary: r.Summary,
+			Tags:    r.Tags,
+			Params:  make([]model.Parameter, len(r.Params)),
+		}
+		for j, p := range r.Params {
+			session.OpenAPISpec.Routes[i].Params[j] = model.Parameter{
+				Name:     p.Name,
+				In:       p.In,
+				Required: p.Required,
+			}
+		}
+	}
 }
 
 func NewShellContext() *ShellContext {

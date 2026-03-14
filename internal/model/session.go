@@ -13,7 +13,28 @@ type Session struct {
 	Requests        []*Request
 	HeaderOverrides map[string]string
 	VarOverrides    map[string]any
+	OpenAPISpec     *OpenAPISpec // stored as pointer for JSON serialization
 	CreatedAt       time.Time
+}
+
+type OpenAPISpec struct {
+	Title   string
+	Version string
+	Routes  []Route
+}
+
+type Route struct {
+	Method  string
+	Path    string
+	Summary string
+	Tags    []string
+	Params  []Parameter
+}
+
+type Parameter struct {
+	Name     string
+	In       string
+	Required bool
 }
 
 func (s *Session) NextRequestID() string {
