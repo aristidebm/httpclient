@@ -12,35 +12,23 @@ type varsCmd struct{}
 
 func (c *varsCmd) Name() string      { return "vars" }
 func (c *varsCmd) Aliases() []string { return nil }
-func (c *varsCmd) Help() string      { return "Manage variables: /vars [flags] [key] [value]" }
+func (c *varsCmd) Help() string {
+	return "Manage variables: /vars [list|set|unset] [flags] [key] [value]"
+}
 
 func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
-	fs := flag.NewFlagSet("vars", flag.ContinueOnError)
-	fs.Usage = func() {
-		fmt.Println("Usage: /vars [flags] [key] [value]")
-		fmt.Println("Flags:")
-		fmt.Println("  --session  Variables scoped to current session (default)")
-		fmt.Println("  --env      Variables scoped to current environment")
-		fmt.Println("  --shell    Shell-level variables")
-		fmt.Println("\nExamples:")
-		fmt.Println("  /vars                    # list all variables")
-		fmt.Println("  /vars foo                # get value of 'foo'")
-		fmt.Println("  /vars foo bar            # set foo=bar in session scope")
-		fmt.Println("  /vars --env foo bar      # set foo=bar in environment")
-		fmt.Println("  /vars --shell foo bar    # set foo=bar in shell")
-		fmt.Println("  /vars --unset foo        # unset foo (from session)")
+	if len(args) < 1 {
+		return c.listVars(ctx, "session")
 	}
 
-	sessionScope := fs.Bool("session", false, "Session scope (default)")
+	subcmd := args[0]
+
+	// Parse remaining args
+	fs := flag.NewFlagSet("vars", flag.ContinueOnError)
+	_ = fs.Bool("session", false, "Session scope (default)") // default, kept for completeness
 	envScope := fs.Bool("env", false, "Environment scope")
 	shellScope := fs.Bool("shell", false, "Shell scope")
-	unset := fs.Bool("unset", false, "Unset variable")
-
-	_ = sessionScope // default scope, kept for flag completeness
-
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
+	fs.Parse(args[1:])
 
 	// Determine scope
 	scope := "session" // default
@@ -50,32 +38,38 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 		scope = "shell"
 	}
 
-	key := fs.Arg(0)
-	value := fs.Arg(1)
-
-	// Just list if no arguments
-	if key == "" && !*unset {
+	switch subcmd {
+	case "list", "ls", "l":
 		return c.listVars(ctx, scope)
-	}
 
-	// Unset
-	if *unset {
+	case "set", "s":
+		key := fs.Arg(0)
+		value := fs.Arg(1)
+		if key == "" || value == "" {
+			return fmt.Errorf("usage: /vars set [--session|--env|--shell] <key> <value>")
+		}
+		return c.setVar(ctx, scope, key, value)
+
+	case "unset", "delete", "u":
+		key := fs.Arg(0)
 		if key == "" {
-			return fmt.Errorf("key required for unset")
+			return fmt.Errorf("usage: /vars unset [--session|--env|--shell] <key>")
 		}
 		return c.unsetVar(ctx, scope, key)
-	}
 
-	// Get
-	if value == "" {
+	case "get", "g":
+		key := fs.Arg(0)
+		if key == "" {
+			return fmt.Errorf("usage: /vars get <key>")
+		}
 		return c.getVar(ctx, key)
-	}
 
-	// Set
-	return c.setVar(ctx, scope, key, value)
+	default:
+		return fmt.Errorf("unknown subcommand: %s (use list, set, unset, or get)", subcmd)
+	}
 }
 
-func (c *varsCmd) listVars(ctx *repl.ShellContext, defaultScope string) error {
+func (c *varsCmd) listVars(ctx *repl.ShellContext, scope string) error {
 	fmt.Println("=== Shell Variables ===")
 	if len(ctx.Vars) == 0 {
 		fmt.Println("  (none)")
@@ -202,8 +196,17 @@ func (c *varsCmd) unsetVar(ctx *repl.ShellContext, scope, key string) error {
 func (c *varsCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	fields := strings.Fields(partial)
 
-	if len(fields) <= 1 {
-		return []string{"--session", "--env", "--shell", "--unset"}
+	if len(fields) == 0 {
+		return []string{"list", "set", "unset", "get"}
+	}
+
+	if len(fields) == 1 {
+		return []string{"list", "set", "unset", "get"}
+	}
+
+	// Complete flags
+	if strings.HasPrefix(fields[len(fields)-1], "-") {
+		return []string{"--session", "--env", "--shell"}
 	}
 
 	// Complete variable names
