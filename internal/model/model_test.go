@@ -64,7 +64,7 @@ func TestEnvironmentClone(t *testing.T) {
 		Name:    "test",
 		BaseURL: "https://api.example.com/",
 		Headers: map[string]string{"Authorization": "Bearer token"},
-		Vars:    map[string]any{"api_key": "secret123"},
+		Vars:    Variables{"api_key": {Name: "api_key", Value: "secret123"}},
 	}
 
 	cloned := original.Clone()
@@ -76,7 +76,7 @@ func TestEnvironmentClone(t *testing.T) {
 		t.Errorf("expected BaseURL %s, got %s", original.BaseURL, cloned.BaseURL)
 	}
 
-	cloned.Vars["new_key"] = "new_value"
+	cloned.Vars["new_key"] = &Variable{Name: "new_key", Value: "new_value"}
 	if original.Vars["new_key"] != nil {
 		t.Error("clone should have independent Vars map")
 	}
@@ -87,7 +87,7 @@ func TestEnvironmentResolve(t *testing.T) {
 		Name:    "test",
 		BaseURL: "https://api.example.com/",
 		Headers: map[string]string{"X-Custom": "header-value"},
-		Vars:    map[string]any{"var1": "value1"},
+		Vars:    Variables{"var1": {Name: "var1", Value: "value1"}},
 	}
 
 	val, ok := env.Resolve("var1")

@@ -22,6 +22,8 @@ type ShellContext struct {
 	LastResp  *model.Response
 	LastData  any
 	LastReqID string
+	Pending   string
+	Readline  *readline.Instance
 }
 
 func (ctx *ShellContext) CurrentSpec() *model.OpenAPISpec {
@@ -111,6 +113,8 @@ func (ctx *ShellContext) Run() error {
 	}
 	defer rl.Close()
 
+	ctx.Readline = rl // ← wire it up so editorCmd.Run can call WriteStdin
+
 	for {
 		line, err := rl.Readline()
 		if err != nil {
@@ -126,7 +130,6 @@ func (ctx *ShellContext) Run() error {
 			continue
 		}
 
-		// Recover from panics
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
@@ -150,7 +153,14 @@ func (ctx *ShellContext) handleLine(line string) error {
 	}
 
 	if strings.HasPrefix(line, "/") {
-		return Dispatch(ctx, strings.TrimPrefix(line, "/"))
+		pending, err := Dispatch(ctx, strings.TrimPrefix(line, "/"))
+		if err != nil {
+			return err
+		}
+		if pending != "" {
+			ctx.Pending = pending
+		}
+		return nil
 	}
 
 	if idx := strings.Index(line, "="); idx > 0 {
@@ -159,10 +169,6 @@ func (ctx *ShellContext) handleLine(line string) error {
 		if isValidVarName(lhs) {
 			return ctx.handleAssignment(lhs, rhs)
 		}
-	}
-
-	if ctx.LastData != nil {
-		fmt.Printf("%v\n", ctx.LastData)
 	}
 
 	return nil
@@ -193,7 +199,14 @@ func (ctx *ShellContext) handleAssignment(lhs, rhs string) error {
 	}
 
 	if strings.HasPrefix(rhs, "/") {
-		return Dispatch(ctx, strings.TrimPrefix(rhs, "/"))
+		pending, err := Dispatch(ctx, strings.TrimPrefix(rhs, "/"))
+		if err != nil {
+			return err
+		}
+		if pending != "" {
+			ctx.Pending = pending
+		}
+		return nil
 	}
 
 	ctx.Vars.Set(lhs, rhs, model.VarScopeShell)

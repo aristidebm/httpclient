@@ -18,6 +18,7 @@ func (c *varsCmd) Help() string {
 
 func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 	scope := ""
+	isPublic := false
 
 	// Find subcommand position
 	subcmdIdx := -1
@@ -37,6 +38,8 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 			scope = "env"
 		} else if flag == "--shell" || flag == "-shell" {
 			scope = "shell"
+		} else if flag == "--public" || flag == "-public" {
+			isPublic = true
 		}
 	}
 
@@ -56,6 +59,8 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 			scope = "env"
 		} else if flag == "--shell" || flag == "-shell" {
 			scope = "shell"
+		} else if flag == "--public" || flag == "-public" {
+			isPublic = true
 		}
 	}
 
@@ -75,16 +80,27 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return c.listVars(ctx, scope)
 
 	case "set", "s":
-		if len(nonFlagArgs) < 2 {
-			return fmt.Errorf("usage: /vars set [--session|--env|--shell] <key> <value>")
+		if len(nonFlagArgs) < 1 {
+			return fmt.Errorf("usage: /vars set [--session|--env|--shell] <key> [value] or <key>=<value>")
 		}
-		key = nonFlagArgs[0]
-		value = nonFlagArgs[1]
+		arg := nonFlagArgs[0]
+		if strings.Contains(arg, "=") {
+			parts := strings.SplitN(arg, "=", 2)
+			key = parts[0]
+			value = parts[1]
+		} else {
+			key = arg
+			if len(nonFlagArgs) >= 2 {
+				value = nonFlagArgs[1]
+			} else {
+				value = ""
+			}
+		}
 		// Use scope from flag, or default to session if not specified
 		if scope == "" {
 			scope = "session"
 		}
-		return c.setVar(ctx, scope, key, value)
+		return c.setVar(ctx, scope, key, value, isPublic)
 
 	case "unset", "delete", "u":
 		if len(nonFlagArgs) < 1 {
@@ -114,18 +130,20 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 		value  string
 		scope  string
 		active bool
+		public bool
 	}
 
 	var entries []varEntry
 
 	// Shell vars
 	if filterScope == "" || filterScope == "shell" {
-		for k, v := range ctx.Vars {
+		for _, v := range ctx.Vars.ListPublic() {
 			entries = append(entries, varEntry{
-				key:    k,
-				value:  fmt.Sprintf("%v", v),
+				key:    v.Name,
+				value:  fmt.Sprintf("%v", v.Value),
 				scope:  "shell",
 				active: true,
+				public: v.Public,
 			})
 		}
 	}
@@ -134,21 +152,22 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 	env := ctx.Tree.CurrentEnv()
 	envVars := make(map[string]bool)
 	if env != nil && (filterScope == "" || filterScope == "env") {
-		for k, v := range env.Vars {
-			envVars[k] = true
+		for _, v := range env.Vars.ListPublic() {
+			envVars[v.Name] = true
 			active := true
 			session := ctx.Tree.Current()
 			if session != nil {
-				if _, ok := session.Vars[k]; ok {
+				if _, ok := session.Vars[v.Name]; ok {
 					active = false
 				}
 			}
 
 			entries = append(entries, varEntry{
-				key:    k,
+				key:    v.Name,
 				value:  fmt.Sprintf("%v", v.Value),
 				scope:  "env:" + env.Name,
 				active: active,
+				public: v.Public,
 			})
 		}
 	}
@@ -156,12 +175,13 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 	// Session vars
 	session := ctx.Tree.Current()
 	if session != nil && (filterScope == "" || filterScope == "session") {
-		for k, v := range session.Vars {
+		for _, v := range session.Vars.ListPublic() {
 			entries = append(entries, varEntry{
-				key:    k,
+				key:    v.Name,
 				value:  fmt.Sprintf("%v", v.Value),
 				scope:  "session",
 				active: true,
+				public: v.Public,
 			})
 		}
 	}
@@ -186,7 +206,7 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 	return nil
 }
 
-func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string) error {
+func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string, isPublic bool) error {
 	session := ctx.Tree.Current()
 
 	switch scope {
@@ -198,6 +218,7 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string) error
 			session.Vars = make(model.Variables)
 		}
 		session.Vars.Set(key, value, model.VarScopeSession)
+		session.Vars.SetPublic(key, isPublic)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (session)", key, value))
 
 	case "env":
@@ -209,6 +230,7 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string) error
 			env.Vars = make(model.Variables)
 		}
 		env.Vars.Set(key, value, model.VarScopeEnv)
+		env.Vars.SetPublic(key, isPublic)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (env: %s)", key, value, env.Name))
 
 	case "shell":
@@ -216,6 +238,7 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string) error
 			ctx.Vars = make(model.Variables)
 		}
 		ctx.Vars.Set(key, value, model.VarScopeShell)
+		ctx.Vars.SetPublic(key, isPublic)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (shell)", key, value))
 	}
 

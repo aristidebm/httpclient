@@ -11,7 +11,7 @@ func TestJSONExporter(t *testing.T) {
 		Name:    "test",
 		BaseURL: "https://api.example.com",
 		Headers: map[string]string{"Authorization": "Bearer token"},
-		Vars:    map[string]any{"api_key": "secret"},
+		Vars:    model.Variables{"api_key": {Name: "api_key", Value: "secret"}},
 	}
 
 	session := &model.Session{
@@ -48,7 +48,7 @@ func TestCurlExporter(t *testing.T) {
 		Name:    "test",
 		BaseURL: "https://api.example.com",
 		Headers: map[string]string{"Authorization": "Bearer token"},
-		Vars:    map[string]any{},
+		Vars:    model.Variables{},
 	}
 
 	session := &model.Session{
@@ -87,7 +87,7 @@ func TestHTTPFileExporter(t *testing.T) {
 		Name:    "test",
 		BaseURL: "https://api.example.com",
 		Headers: map[string]string{"Authorization": "Bearer token"},
-		Vars:    map[string]any{},
+		Vars:    model.Variables{},
 	}
 
 	session := &model.Session{

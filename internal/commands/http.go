@@ -305,10 +305,31 @@ type postCmd struct{ httpCmd }
 type putCmd struct{ httpCmd }
 type deleteCmd struct{ httpCmd }
 type patchCmd struct{ httpCmd }
-type headCmd struct{ httpCmd }
-type optionsCmd struct{ httpCmd }
-type traceCmd struct{ httpCmd }
-type connectCmd struct{ httpCmd }
+
+type requestCmd struct{}
+
+func (c *requestCmd) Name() string      { return "request" }
+func (c *requestCmd) Aliases() []string { return nil }
+func (c *requestCmd) Help() string {
+	return "Make arbitrary HTTP request: /request <method> <endpoint>"
+}
+
+func (c *requestCmd) Run(ctx *repl.ShellContext, args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("usage: /request <method> <endpoint>")
+	}
+
+	method := strings.ToUpper(args[0])
+	endpoint := args[1]
+
+	// Create a temporary httpCmd and run it
+	http := &httpCmd{method: method}
+	return http.Run(ctx, []string{endpoint})
+}
+
+func (c *requestCmd) Complete(ctx *repl.ShellContext, partial string) []string {
+	return []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"}
+}
 
 func init() {
 	repl.Register(&getCmd{httpCmd{method: "GET"}})
@@ -316,8 +337,5 @@ func init() {
 	repl.Register(&putCmd{httpCmd{method: "PUT"}})
 	repl.Register(&deleteCmd{httpCmd{method: "DELETE"}})
 	repl.Register(&patchCmd{httpCmd{method: "PATCH"}})
-	repl.Register(&headCmd{httpCmd{method: "HEAD"}})
-	repl.Register(&optionsCmd{httpCmd{method: "OPTIONS"}})
-	repl.Register(&traceCmd{httpCmd{method: "TRACE"}})
-	repl.Register(&connectCmd{httpCmd{method: "CONNECT"}})
+	repl.Register(&requestCmd{})
 }

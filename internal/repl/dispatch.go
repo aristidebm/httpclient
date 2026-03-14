@@ -22,10 +22,10 @@ func Register(cmd Command) {
 	}
 }
 
-func Dispatch(ctx *ShellContext, line string) error {
+func Dispatch(ctx *ShellContext, line string) (string, error) {
 	parts := tokenize(line)
 	if len(parts) == 0 {
-		return fmt.Errorf("empty command")
+		return "", fmt.Errorf("empty command")
 	}
 
 	name := strings.ToLower(parts[0])
@@ -33,10 +33,11 @@ func Dispatch(ctx *ShellContext, line string) error {
 
 	cmd, ok := commands[name]
 	if !ok {
-		return fmt.Errorf("unknown command: /%s — type /help", name)
+		return "", fmt.Errorf("unknown command: /%s — type /help", name)
 	}
 
-	return cmd.Run(ctx, args)
+	err := cmd.Run(ctx, args)
+	return "", err
 }
 
 func tokenize(line string) []string {
@@ -102,10 +103,39 @@ func (c *helpCmd) Run(ctx *ShellContext, args []string) error {
 		return nil
 	}
 
-	fmt.Println("Available commands:")
-	for _, cmd := range ListCommands() {
-		fmt.Printf("  /%s - %s\n", cmd.Name(), cmd.Help())
+	cmds := ListCommands()
+
+	httpMethods := []string{"get", "post", "put", "patch", "delete", "request"}
+	ioCommands := []string{"import", "export"}
+	sessionCommands := []string{"session", "routes"}
+	envCommands := []string{"env", "vars"}
+	utilCommands := []string{"filter", "editor", "replay", "watch", "save"}
+	systemCommands := []string{"help", "exit"}
+
+	printGroup := func(title string, names []string) {
+		if len(names) == 0 {
+			return
+		}
+		fmt.Printf("\n%s:\n", title)
+		nameSet := make(map[string]bool)
+		for _, name := range names {
+			nameSet[name] = true
+		}
+		for _, cmd := range cmds {
+			if nameSet[cmd.Name()] {
+				fmt.Printf("  /%-8s %s\n", cmd.Name(), cmd.Help())
+			}
+		}
 	}
+
+	fmt.Println("Available commands:")
+	printGroup("HTTP Methods", httpMethods)
+	printGroup("Import / Export", ioCommands)
+	printGroup("Session", sessionCommands)
+	printGroup("Environment", envCommands)
+	printGroup("Utilities", utilCommands)
+	printGroup("System", systemCommands)
+
 	return nil
 }
 
@@ -159,5 +189,4 @@ func (c *infoCmd) Complete(ctx *ShellContext, partial string) []string {
 func init() {
 	Register(&helpCmd{})
 	Register(&exitCmd{})
-	Register(&infoCmd{})
 }

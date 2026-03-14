@@ -14,7 +14,7 @@ type sessionCmd struct{}
 func (c *sessionCmd) Name() string      { return "session" }
 func (c *sessionCmd) Aliases() []string { return nil }
 func (c *sessionCmd) Help() string {
-	return "Manage sessions: new, branch, switch, list, rename, drop, move"
+	return "Manage sessions: new, branch, switch, list, rename, drop, move, log"
 }
 
 func (c *sessionCmd) Run(ctx *repl.ShellContext, args []string) error {
@@ -38,6 +38,8 @@ func (c *sessionCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return sessionDrop(ctx, args[1:])
 	case "move":
 		return sessionMove(ctx, args[1:])
+	case "requests", "log":
+		return sessionRequests(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown session subcommand: %s", subcmd)
 	}
@@ -352,6 +354,30 @@ func sessionMove(ctx *repl.ShellContext, args []string) error {
 	target.AddRequest(cloned)
 
 	repl.PrintSuccess(fmt.Sprintf("Moved request %s to session %q (now %s)", reqID, targetSessionName, cloned.ID))
+	return nil
+}
+
+func sessionRequests(ctx *repl.ShellContext, args []string) error {
+	session := ctx.Tree.Current()
+	if session == nil {
+		return fmt.Errorf("no current session")
+	}
+
+	if len(session.Requests) == 0 {
+		fmt.Println("No requests in this session.")
+		return nil
+	}
+
+	fmt.Println("ID            METHOD   URL")
+	fmt.Println("───────────────────────────────────────────────────────────────")
+	for _, req := range session.Requests {
+		method := req.Method
+		if req.Response != nil {
+			method = fmt.Sprintf("%s %d", method, req.Response.StatusCode)
+		}
+		fmt.Printf("%-13s %-8s %s\n", req.ID, method, req.URL)
+	}
+
 	return nil
 }
 

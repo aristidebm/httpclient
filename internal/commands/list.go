@@ -11,13 +11,13 @@ import (
 	"httpclient/internal/repl"
 )
 
-type listCmd struct{}
+type routesCmd struct{}
 
-func (c *listCmd) Name() string      { return "list" }
-func (c *listCmd) Aliases() []string { return nil }
-func (c *listCmd) Help() string      { return "List routes from loaded OpenAPI spec: /list [filter]" }
+func (c *routesCmd) Name() string      { return "routes" }
+func (c *routesCmd) Aliases() []string { return nil }
+func (c *routesCmd) Help() string      { return "List routes from loaded OpenAPI spec: /routes [filter]" }
 
-func (c *listCmd) Run(ctx *repl.ShellContext, args []string) error {
+func (c *routesCmd) Run(ctx *repl.ShellContext, args []string) error {
 	spec := ctx.CurrentSpec()
 	if spec == nil {
 		fmt.Println("No spec loaded. Use /load <url-or-file>")
@@ -100,10 +100,10 @@ func (c *listCmd) Run(ctx *repl.ShellContext, args []string) error {
 	return nil
 }
 
-func (c *listCmd) Complete(ctx *repl.ShellContext, partial string) []string {
+func (c *routesCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	return nil
 }
 
 func init() {
-	repl.Register(&listCmd{})
+	repl.Register(&routesCmd{})
 }

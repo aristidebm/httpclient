@@ -28,7 +28,7 @@ func BuildPrompt(ctx *ShellContext) string {
 	prompt := color.New(color.FgHiBlack).Sprint("› ")
 
 	// return "[httpclient : " + httpclient + " : " + envPart + " : " + sessionPart + "] " + prompt
-	return "[httpclient : " + envPart + " : " + sessionPart + "] " + prompt
+	return "[" + envPart + " : " + sessionPart + "] " + prompt
 }
 
 func toString(v any) string {

@@ -84,6 +84,16 @@ func (v Variables) ListByScope(scope VarScope) []*Variable {
 	return vars
 }
 
+func (v Variables) ListPublic() []*Variable {
+	var vars []*Variable
+	for _, variable := range v {
+		if variable.Public {
+			vars = append(vars, variable)
+		}
+	}
+	return vars
+}
+
 func ResolveVars(template string, layers ...map[string]any) (string, []string) {
 	var unresolved []string
 

@@ -15,7 +15,7 @@ func TestClientExecuteSuccess(t *testing.T) {
 		Name:    "test",
 		BaseURL: "https://httpbin.org",
 		Headers: map[string]string{},
-		Vars:    map[string]any{},
+		Vars:    model.Variables{},
 	}
 
 	req := &model.Request{
@@ -24,7 +24,7 @@ func TestClientExecuteSuccess(t *testing.T) {
 		Headers: map[string]string{
 			"Accept": "application/json",
 		},
-		Vars: map[string]any{},
+		Vars: model.Variables{},
 	}
 
 	err := client.Execute(req, env)
@@ -53,13 +53,13 @@ func TestClientTimeout(t *testing.T) {
 		Name:    "test",
 		BaseURL: "https://httpbin.org",
 		Headers: map[string]string{},
-		Vars:    map[string]any{},
+		Vars:    model.Variables{},
 	}
 
 	req := &model.Request{
 		Method: "GET",
 		URL:    "https://httpbin.org/delay/5",
-		Vars:   map[string]any{},
+		Vars:   model.Variables{},
 	}
 
 	err := client.Execute(req, env)
@@ -85,7 +85,7 @@ func TestHeaderMerging(t *testing.T) {
 		Headers: map[string]string{
 			"X-Foo": "env",
 		},
-		Vars: map[string]any{},
+		Vars: model.Variables{},
 	}
 
 	req := &model.Request{
@@ -94,7 +94,7 @@ func TestHeaderMerging(t *testing.T) {
 		Headers: map[string]string{
 			"X-Foo": "request",
 		},
-		Vars: map[string]any{},
+		Vars: model.Variables{},
 	}
 
 	err := client.Execute(req, env)
@@ -114,14 +114,14 @@ func TestURLResolution(t *testing.T) {
 		Name:    "test",
 		BaseURL: "https://httpbin.org",
 		Headers: map[string]string{},
-		Vars:    map[string]any{},
+		Vars:    model.Variables{},
 	}
 
 	req := &model.Request{
 		Method: "GET",
 		URL:    "/anything/{path}",
-		Vars: map[string]any{
-			"path": "test",
+		Vars: model.Variables{
+			"path": {Name: "path", Value: "test"},
 		},
 	}
 
@@ -142,13 +142,13 @@ func TestNon2xxResponse(t *testing.T) {
 		Name:    "test",
 		BaseURL: "https://httpbin.org",
 		Headers: map[string]string{},
-		Vars:    map[string]any{},
+		Vars:    model.Variables{},
 	}
 
 	req := &model.Request{
 		Method: "GET",
 		URL:    "/status/404",
-		Vars:   map[string]any{},
+		Vars:   model.Variables{},
 	}
 
 	err := client.Execute(req, env)
@@ -168,7 +168,7 @@ func TestApplyAuth(t *testing.T) {
 		Headers: map[string]string{
 			"Authorization": "my-token",
 		},
-		Vars: map[string]any{},
+		Vars: model.Variables{},
 	}
 
 	req, _ := http.NewRequest("GET", "https://api.example.com/test", nil)
@@ -187,7 +187,7 @@ func TestApplyAuthWithTokenPrefix(t *testing.T) {
 		Headers: map[string]string{
 			"Authorization": "TOKEN my-token",
 		},
-		Vars: map[string]any{},
+		Vars: model.Variables{},
 	}
 
 	req, _ := http.NewRequest("GET", "https://api.example.com/test", nil)

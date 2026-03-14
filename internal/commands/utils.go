@@ -3,336 +3,202 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 
-	"github.com/itchyny/gojq"
 	"httpclient/internal/model"
 	"httpclient/internal/repl"
 )
 
-type jqCmd struct{}
+type filterCmd struct{}
 
-func (c *jqCmd) Name() string      { return "jq" }
-func (c *jqCmd) Aliases() []string { return nil }
-func (c *jqCmd) Help() string      { return "Run jq pattern against last response data" }
-
-func (c *jqCmd) Run(ctx *repl.ShellContext, args []string) error {
-	if ctx.LastData == nil {
-		return fmt.Errorf("no data to query. Execute a request first.")
-	}
-
-	fs := flag.NewFlagSet("jq", flag.ContinueOnError)
-	fs.Usage = func() {
-		fmt.Println("Usage: /jq <pattern> [-f]")
-	}
-	firstOnly := fs.Bool("f", false, "Return only first result")
-
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-
-	pattern := fs.Arg(0)
-	if pattern == "" {
-		return fmt.Errorf("pattern required")
-	}
-
-	query, err := gojq.Parse(pattern)
-	if err != nil {
-		return fmt.Errorf("invalid pattern: %w", err)
-	}
-
-	// Convert lastData to interface{} for gojq
-	var data interface{}
-	jsonBytes, err := json.Marshal(ctx.LastData)
-	if err != nil {
-		return fmt.Errorf("failed to marshal data: %w", err)
-	}
-	json.Unmarshal(jsonBytes, &data)
-
-	var results []any
-	iter := query.Run(data)
-	for {
-		v, ok := iter.Next()
-		if !ok {
-			break
-		}
-		if err, ok := v.(error); ok {
-			return fmt.Errorf("query error: %w", err)
-		}
-		results = append(results, v)
-	}
-
-	if len(results) == 0 {
-		fmt.Println("No results")
-		return nil
-	}
-
-	if *firstOnly {
-		out, _ := json.MarshalIndent(results[0], "", "  ")
-		fmt.Println(string(out))
-		ctx.LastData = results[0]
-	} else {
-		out, _ := json.MarshalIndent(results, "", "  ")
-		fmt.Println(string(out))
-		ctx.LastData = results
-	}
-
-	return nil
+func (c *filterCmd) Name() string      { return "filter" }
+func (c *filterCmd) Aliases() []string { return nil }
+func (c *filterCmd) Help() string {
+	return "Filter output: /filter <tool> [args...] or /filter --request [req-id]"
 }
 
-func (c *jqCmd) Complete(ctx *repl.ShellContext, partial string) []string {
-	return nil
-}
-
-type updateCmd struct{}
-
-func (c *updateCmd) Name() string      { return "update" }
-func (c *updateCmd) Aliases() []string { return nil }
-func (c *updateCmd) Help() string      { return "Edit last response data in editor" }
-
-func (c *updateCmd) Run(ctx *repl.ShellContext, args []string) error {
-	varName := ""
-	if len(args) > 0 {
-		varName = args[0]
-	}
-
-	data := ctx.LastData
-	if data == nil {
-		return fmt.Errorf("no data to edit")
-	}
-
-	// Get editor
-	editor := os.Getenv("VISUAL")
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "nano"
-	}
-
-	// Write to temp file
-	tmpFile := fmt.Sprintf("/tmp/httpclient_update_%d.json", os.Getpid())
-	defer os.Remove(tmpFile)
-
-	var content []byte
-	if varName == "" {
-		content, _ = json.MarshalIndent(data, "", "  ")
-	} else {
-		if val, ok := ctx.Vars[varName]; ok {
-			content, _ = json.MarshalIndent(val, "", "  ")
-		} else {
-			content = []byte("{}")
-		}
-	}
-
-	os.WriteFile(tmpFile, content, 0644)
-
-	// Run editor
-	cmd := exec.Command(editor, tmpFile)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("editor error: %w", err)
-	}
-
-	// Check if changed
-	newContent, err := os.ReadFile(tmpFile)
-	if err != nil {
-		return fmt.Errorf("failed to read temp file: %w", err)
-	}
-
-	if string(content) == string(newContent) {
-		fmt.Println("No changes")
-		return nil
-	}
-
-	// Try to parse as JSON
-	var parsed any
-	if err := json.Unmarshal(newContent, &parsed); err != nil {
-		// Store as string if not valid JSON
-		parsed = string(newContent)
-	}
-
-	if varName == "" {
-		ctx.LastData = parsed
-	} else {
-		ctx.Vars.Set(varName, parsed, model.VarScopeShell)
-	}
-
-	fmt.Println("Updated")
-	return nil
-}
-
-func (c *updateCmd) Complete(ctx *repl.ShellContext, partial string) []string {
-	var names []string
-	for k := range ctx.Vars {
-		names = append(names, k)
-	}
-	return names
-}
-
-type editCmd struct{}
-
-func (c *editCmd) Name() string      { return "edit" }
-func (c *editCmd) Aliases() []string { return nil }
-func (c *editCmd) Help() string      { return "Edit a variable in editor" }
-
-func (c *editCmd) Run(ctx *repl.ShellContext, args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("usage: /edit <var-name>")
-	}
-
-	varName := args[0]
-
-	// Get editor
-	editor := os.Getenv("VISUAL")
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "nano"
-	}
-
-	// Write to temp file
-	tmpFile := fmt.Sprintf("/tmp/httpclient_edit_%s.json", varName)
-	defer os.Remove(tmpFile)
-
-	var content []byte
-	if val, ok := ctx.Vars[varName]; ok {
-		content, _ = json.MarshalIndent(val, "", "  ")
-	} else {
-		content = []byte("{}")
-	}
-
-	os.WriteFile(tmpFile, content, 0644)
-
-	// Run editor
-	cmd := exec.Command(editor, tmpFile)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("editor error: %w", err)
-	}
-
-	// Check if changed
-	newContent, err := os.ReadFile(tmpFile)
-	if err != nil {
-		return fmt.Errorf("failed to read temp file: %w", err)
-	}
-
-	if string(content) == string(newContent) {
-		fmt.Println("No changes")
-		return nil
-	}
-
-	// Try to parse as JSON
-	var parsed any
-	if err := json.Unmarshal(newContent, &parsed); err != nil {
-		parsed = string(newContent)
-	}
-
-	ctx.Vars.Set(varName, parsed, model.VarScopeShell)
-	fmt.Println("Updated")
-	return nil
-}
-
-func (c *editCmd) Complete(ctx *repl.ShellContext, partial string) []string {
-	var names []string
-	for k := range ctx.Vars {
-		names = append(names, k)
-	}
-	return names
-}
-
-type clipCmd struct{}
-
-func (c *clipCmd) Name() string      { return "clip" }
-func (c *clipCmd) Aliases() []string { return nil }
-func (c *clipCmd) Help() string      { return "Copy to clipboard: /clip [var-name|req-id]" }
-
-func (c *clipCmd) Run(ctx *repl.ShellContext, args []string) error {
-	var content string
-
+func (c *filterCmd) Run(ctx *repl.ShellContext, args []string) error {
 	if len(args) == 0 {
-		// Copy last data
-		if ctx.LastData == nil {
-			return fmt.Errorf("no data to copy")
-		}
-		out, _ := json.Marshal(ctx.LastData)
-		content = string(out)
-	} else {
-		arg := args[0]
-		// Check if it's a variable
-		if val, ok := ctx.Vars[arg]; ok {
-			out, _ := json.Marshal(val)
-			content = string(out)
-		} else {
-			// Check if it's a request ID
+		return fmt.Errorf("usage: /filter <tool> [args...] or /filter --request [req-id]")
+	}
+
+	// Check for --request flag
+	if args[0] == "--request" {
+		var req *model.Request
+
+		if len(args) == 1 {
+			// Use last request from session
 			session := ctx.Tree.Current()
-			if session != nil {
-				req, ok := session.GetRequest(arg)
-				if ok && req.Response != nil {
-					content = string(req.Response.RawBody)
-				} else {
-					return fmt.Errorf("request %s not found or not executed", arg)
-				}
-			} else {
-				return fmt.Errorf("unknown argument: %s", arg)
+			if session == nil || len(session.Requests) == 0 {
+				return fmt.Errorf("no requests in session")
+			}
+			req = session.Requests[len(session.Requests)-1]
+		} else {
+			// Use specific request ID
+			reqID := args[1]
+			session := ctx.Tree.Current()
+			if session == nil {
+				return fmt.Errorf("no current session")
+			}
+			var ok bool
+			req, ok = session.GetRequest(reqID)
+			if !ok {
+				return fmt.Errorf("request %q not found in session", reqID)
 			}
 		}
-	}
 
-	// Try clipboard backends
-	clipCmd := exec.Command("pbcopy")
-	clipCmd.Stdin = bytes.NewReader([]byte(content))
-	if clipCmd.Run() == nil {
-		fmt.Printf("Copied %d characters\n", len(content))
+		if req.Response == nil {
+			return fmt.Errorf("request %q has not been executed", req.ID)
+		}
+
+		// Set as last response
+		ctx.LastResp = req.Response
+
+		// Run filter tool if additional args provided
+		if len(args) > 2 {
+			return runFilter(strings.Join(args[2:], " "))
+		}
 		return nil
 	}
 
-	clipCmd = exec.Command("wl-copy")
-	clipCmd.Stdin = bytes.NewReader([]byte(content))
-	if clipCmd.Run() == nil {
-		fmt.Printf("Copied %d characters\n", len(content))
-		return nil
+	// Run the filter tool on last response data
+	tool := args[0]
+	toolArgs := args[1:]
+
+	if ctx.LastData == nil && ctx.LastResp == nil {
+		return fmt.Errorf("no data to filter. Execute a request first.")
 	}
 
-	clipCmd = exec.Command("xclip", "-selection", "clipboard")
-	clipCmd.Stdin = bytes.NewReader([]byte(content))
-	if clipCmd.Run() == nil {
-		fmt.Printf("Copied %d characters\n", len(content))
-		return nil
+	// Convert last response to JSON
+	var data []byte
+	var err error
+
+	if ctx.LastData != nil {
+		data, err = json.Marshal(ctx.LastData)
+	} else if ctx.LastResp != nil {
+		data, err = json.Marshal(ctx.LastResp)
 	}
 
-	clipCmd = exec.Command("xsel", "--clipboard", "--input")
-	clipCmd.Stdin = bytes.NewReader([]byte(content))
-	if clipCmd.Run() == nil {
-		fmt.Printf("Copied %d characters\n", len(content))
-		return nil
+	if err != nil {
+		return fmt.Errorf("failed to marshal data: %v", err)
 	}
 
-	return fmt.Errorf("no clipboard backend found (tried: pbcopy, wl-copy, xclip, xsel)")
+	return runToolWithInput(tool, toolArgs, data)
 }
 
-func (c *clipCmd) Complete(ctx *repl.ShellContext, partial string) []string {
-	var names []string
-	for k := range ctx.Vars {
-		names = append(names, k)
+func runFilter(filter string) error {
+	if filter == "" {
+		return nil
 	}
-	session := ctx.Tree.Current()
-	if session != nil {
-		for _, req := range session.Requests {
-			names = append(names, req.ID)
+
+	if strings.HasPrefix(filter, ".") || strings.HasPrefix(filter, "try") {
+		return runToolWithInput("jq", []string{filter}, nil)
+	}
+
+	parts := strings.Fields(filter)
+	if len(parts) == 0 {
+		return nil
+	}
+	return runToolWithInput(parts[0], parts[1:], nil)
+}
+
+func runToolWithInput(tool string, args []string, input []byte) error {
+	cmd := exec.Command(tool, args...)
+	cmd.Stdin = bytes.NewReader(input)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func (c *filterCmd) Complete(ctx *repl.ShellContext, partial string) []string {
+	return []string{"jq", "fx", "fzf", "--request"}
+}
+
+type editorCmd struct{}
+
+func (c *editorCmd) Name() string      { return "editor" }
+func (c *editorCmd) Aliases() []string { return nil }
+func (c *editorCmd) Help() string      { return "Edit content in $EDITOR" }
+
+func (c *editorCmd) Run(ctx *repl.ShellContext, args []string) error {
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vim"
+	}
+
+	// Get content to pre-populate the temp file with
+	var content string
+	if ctx.LastData != nil {
+		data, err := json.MarshalIndent(ctx.LastData, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal data: %v", err)
 		}
+		content = string(data)
+	} else if ctx.LastResp != nil {
+		data, err := json.MarshalIndent(ctx.LastResp, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal data: %v", err)
+		}
+		content = string(data)
 	}
-	return names
+
+	// Create temp file
+	tmpFile, err := os.CreateTemp("", "httpclient-*.txt")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(content); err != nil {
+		return fmt.Errorf("failed to write to temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	// Run editor — must connect stdio so the TUI renders correctly
+	cmd := exec.Command(editor, tmpFile.Name())
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("editor error: %v", err)
+	}
+
+	// Read back what the user wrote
+	editedContent, err := os.ReadFile(tmpFile.Name())
+	if err != nil {
+		return fmt.Errorf("failed to read edited file: %v", err)
+	}
+
+	// Strip trailing newlines so readline doesn't auto-submit an empty line
+	text := strings.TrimRight(string(editedContent), "\r\n")
+	if text == "" {
+		return nil
+	}
+
+	// Inject the text into readline's input buffer WITHOUT a trailing '\n'.
+	// readline drains WriteStdin byte-by-byte into its line buffer and redraws
+	// the prompt, so the result is:
+	//
+	//   [user@host] › Something█          ← cursor here, nothing submitted yet
+	//
+	// The user can still edit the text or just press Enter to execute it.
+	if ctx.Readline == nil {
+		// Fallback: no readline instance wired up, store for caller to handle
+		ctx.Pending = text
+		return nil
+	}
+	if _, err := ctx.Readline.WriteStdin([]byte(text)); err != nil {
+		return fmt.Errorf("failed to inject text into readline: %v", err)
+	}
+	return nil
+}
+
+func (c *editorCmd) Complete(ctx *repl.ShellContext, partial string) []string {
+	return nil
 }
 
 type replayCmd struct{}
@@ -366,7 +232,6 @@ func (c *replayCmd) Run(ctx *repl.ShellContext, args []string) error {
 	}
 
 	if target == "all" {
-		// Replay all
 		for _, req := range session.Requests {
 			if !req.IsExecuted() {
 				continue
@@ -380,7 +245,6 @@ func (c *replayCmd) Run(ctx *repl.ShellContext, args []string) error {
 			repl.PrintResponse(cloned.Response)
 		}
 	} else {
-		// Replay specific request
 		req, ok := session.GetRequest(target)
 		if !ok {
 			return fmt.Errorf("request %s not found", target)
@@ -462,7 +326,6 @@ func (c *watchCmd) Run(ctx *repl.ShellContext, args []string) error {
 			session.AddRequest(cloned)
 			fmt.Printf("[%s] %d %s\n", cloned.ID, cloned.Response.StatusCode, cloned.Response.Status)
 		}
-
 		time.Sleep(time.Duration(interval) * time.Second)
 	}
 }
@@ -497,9 +360,7 @@ func (c *saveCmd) Run(ctx *repl.ShellContext, args []string) error {
 	}
 
 	if filename == "" {
-		// Try Content-Disposition
 		if cd := ctx.LastResp.Headers["Content-Disposition"]; cd != "" {
-			// Extract filename from Content-Disposition
 			parts := strings.Split(cd, "filename=")
 			if len(parts) > 1 {
 				filename = strings.Trim(parts[1], "\"")
@@ -508,7 +369,6 @@ func (c *saveCmd) Run(ctx *repl.ShellContext, args []string) error {
 	}
 
 	if filename == "" {
-		// Generate default filename
 		ext := ""
 		ct := ctx.LastResp.Headers["Content-Type"]
 		switch {
@@ -524,8 +384,7 @@ func (c *saveCmd) Run(ctx *repl.ShellContext, args []string) error {
 		filename = fmt.Sprintf("httpclient_%d%s", time.Now().Unix(), ext)
 	}
 
-	err := os.WriteFile(filename, ctx.LastResp.RawBody, 0644)
-	if err != nil {
+	if err := os.WriteFile(filename, ctx.LastResp.RawBody, 0644); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
@@ -538,10 +397,8 @@ func (c *saveCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 }
 
 func init() {
-	repl.Register(&jqCmd{})
-	repl.Register(&updateCmd{})
-	repl.Register(&editCmd{})
-	repl.Register(&clipCmd{})
+	repl.Register(&filterCmd{})
+	repl.Register(&editorCmd{})
 	repl.Register(&replayCmd{})
 	repl.Register(&watchCmd{})
 	repl.Register(&saveCmd{})

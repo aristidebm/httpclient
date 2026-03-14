@@ -13,13 +13,13 @@ import (
 
 type loadCmd struct{}
 
-func (c *loadCmd) Name() string      { return "load" }
-func (c *loadCmd) Aliases() []string { return nil }
-func (c *loadCmd) Help() string      { return "Load OpenAPI spec, .http file, or curl commands" }
+func (c *loadCmd) Name() string      { return "import" }
+func (c *loadCmd) Aliases() []string { return []string{"load"} }
+func (c *loadCmd) Help() string      { return "Import OpenAPI spec, .http file, or curl commands" }
 
 func (c *loadCmd) Run(ctx *repl.ShellContext, args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("usage: /load <filepath-or-url>")
+		return fmt.Errorf("usage: /import <filepath-or-url>")
 	}
 
 	target := args[0]

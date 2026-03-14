@@ -192,8 +192,10 @@ func envShow(ctx *repl.ShellContext, args []string) error {
 	if env.Vars == nil || len(env.Vars) == 0 {
 		fmt.Println("  (none)")
 	} else {
-		for k, v := range env.Vars {
-			fmt.Printf("  %s: %v (public=%v)\n", k, v.Value, v.Public)
+		fmt.Println("KEY             VALUE                          SCOPE")
+		fmt.Println("───────────────────────────────────────────────────────────────")
+		for _, v := range env.Vars.ListPublic() {
+			fmt.Printf("%-15s %-30s %s\n", v.Name, fmt.Sprintf("%v", v.Value), "env:"+env.Name)
 		}
 	}
 	return nil
