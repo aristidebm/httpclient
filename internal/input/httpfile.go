@@ -77,20 +77,25 @@ func parseHTTPBlock(block string) (*model.Request, map[string]any, error) {
 		if i == 0 {
 			parts := strings.Fields(line)
 			if len(parts) < 2 {
-				return nil, nil, fmt.Errorf("invalid request line: %s", line)
+				return nil, nil, fmt.Errorf("invalid request: %s", line)
 			}
 			req.Method = parts[0]
 			req.URL = parts[1]
 			continue
 		}
 
-		// Check for variable declarations @var = value
+		// Check for variable declarations @var=value or @var = value
 		if strings.HasPrefix(line, "@") {
+			// Remove @ and parse var = value
+			line = line[1:]
+			// Support both @VAR=value and @VAR = value
 			parts := strings.SplitN(line, "=", 2)
 			if len(parts) == 2 {
-				varName := strings.TrimSpace(parts[0][1:])
+				varName := strings.TrimSpace(parts[0])
 				varValue := strings.TrimSpace(parts[1])
-				vars[varName] = varValue
+				if varName != "" {
+					vars[varName] = varValue
+				}
 			}
 			continue
 		}
@@ -114,5 +119,25 @@ func parseHTTPBlock(block string) (*model.Request, map[string]any, error) {
 		}
 	}
 
+	// Resolve {{variable}} in URL and headers
+	if req.URL != "" {
+		req.URL = resolveBraceVars(req.URL, vars)
+	}
+	for k, v := range req.Headers {
+		req.Headers[k] = resolveBraceVars(v, vars)
+	}
+	if len(req.Body) > 0 {
+		resolved := resolveBraceVars(string(req.Body), vars)
+		req.Body = []byte(resolved)
+	}
+
 	return req, vars, nil
+}
+
+func resolveBraceVars(s string, vars map[string]any) string {
+	for k, v := range vars {
+		placeholder := fmt.Sprintf("{{%s}}", k)
+		s = strings.ReplaceAll(s, placeholder, fmt.Sprintf("%v", v))
+	}
+	return s
 }
