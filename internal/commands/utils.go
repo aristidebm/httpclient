@@ -258,6 +258,17 @@ func (c *replayCmd) Run(ctx *repl.ShellContext, args []string) error {
 			return err
 		}
 		session.AddRequest(cloned)
+
+		ctx.LastResp = cloned.Response
+		ctx.LastReqID = cloned.ID
+		if len(cloned.Response.Body) > 0 {
+			var parsedData any
+			json.Unmarshal(cloned.Response.Body, &parsedData)
+			ctx.LastData = parsedData
+		} else {
+			ctx.LastData = string(cloned.Response.RawBody)
+		}
+
 		repl.PrintResponse(cloned.Response)
 	}
 

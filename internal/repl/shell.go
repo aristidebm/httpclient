@@ -1,6 +1,7 @@
 package repl
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -171,6 +172,10 @@ func (ctx *ShellContext) handleLine(line string) error {
 		}
 	}
 
+	if cmd, ok := GetCommand(strings.Fields(line)[0]); ok {
+		return cmd.Run(ctx, strings.Fields(line)[1:])
+	}
+
 	return nil
 }
 
@@ -224,14 +229,29 @@ func (ctx *ShellContext) handleShell(cmd string) error {
 	for k, v := range ctx.Vars {
 		varsMap[k] = v.Value
 	}
-	resolved, _ := model.ResolveVars(cmd, varsMap)
 
-	parts, err := splitShellCommand(resolved)
-	if err != nil {
-		return err
+	// Add special variables
+	if ctx.LastResp != nil {
+		tmpFile, err := os.CreateTemp("", "httpclient-")
+		if err == nil {
+			tmpFile.Write(ctx.LastResp.RawBody)
+			tmpFile.Close()
+			varsMap["last"] = tmpFile.Name()
+		}
+		if ctx.LastData != nil {
+			tmpFile2, err := os.CreateTemp("", "httpclient-data-")
+			if err == nil {
+				jsonData, _ := json.Marshal(ctx.LastData)
+				tmpFile2.Write(jsonData)
+				tmpFile2.Close()
+				varsMap["data"] = tmpFile2.Name()
+			}
+		}
 	}
 
-	execCmd := exec.Command(parts[0], parts[1:]...)
+	resolved, _ := model.ResolveVars(cmd, varsMap)
+
+	execCmd := exec.Command("bash", "-c", resolved)
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
