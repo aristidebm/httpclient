@@ -1,17 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
-	_ "httpclient/internal/commands"
-	"httpclient/internal/repl"
+	"httpclient/cmd"
 )
 
 func main() {
-	ctx := repl.NewShellContext()
-	if err := ctx.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
