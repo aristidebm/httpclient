@@ -2,6 +2,8 @@
 
 An HTTP client with an interactive REPL shell and one-shot mode for making HTTP requests.
 
+![Demo](demo.gif)
+
 ## Features
 
 - Interactive REPL shell for exploring APIs
