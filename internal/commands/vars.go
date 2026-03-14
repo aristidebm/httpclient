@@ -168,6 +168,9 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string) error
 		if session == nil {
 			return fmt.Errorf("no current session")
 		}
+		if session.Vars == nil {
+			session.Vars = make(model.Variables)
+		}
 		session.Vars.Set(key, value, model.VarScopeSession)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (session)", key, value))
 
@@ -176,10 +179,16 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string) error
 		if env == nil {
 			return fmt.Errorf("no current environment")
 		}
+		if env.Vars == nil {
+			env.Vars = make(model.Variables)
+		}
 		env.Vars.Set(key, value, model.VarScopeEnv)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (env: %s)", key, value, env.Name))
 
 	case "shell":
+		if ctx.Vars == nil {
+			ctx.Vars = make(model.Variables)
+		}
 		ctx.Vars.Set(key, value, model.VarScopeShell)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (shell)", key, value))
 	}
