@@ -126,9 +126,17 @@ func (ctx *ShellContext) Run() error {
 			continue
 		}
 
-		if err := ctx.handleLine(line); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		}
+		// Recover from panics
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", r)
+				}
+			}()
+			if err := ctx.handleLine(line); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			}
+		}()
 
 		rl.SetPrompt(BuildPrompt(ctx))
 	}

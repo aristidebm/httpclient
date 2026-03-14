@@ -2,10 +2,13 @@ package repl
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"strings"
 	"time"
 
-	"httpclient/internal/model"
 	"github.com/fatih/color"
+	"httpclient/internal/model"
 )
 
 func PrintResponse(resp *model.Response) {
@@ -27,8 +30,49 @@ func PrintResponse(resp *model.Response) {
 	fmt.Println(color.New(statusColor).Sprint(statusLine))
 
 	if len(resp.Body) > 0 {
+		// Check for binary response
+		ct := resp.Headers["Content-Type"]
+		if isBinaryContentType(ct) {
+			size := len(resp.RawBody)
+			fmt.Printf("Content-Type: %s\n", ct)
+			fmt.Printf("Size: %d bytes\n", size)
+			fmt.Println("Binary response. Use /save to download.")
+			return
+		}
+
+		// Check for long response - page it
+		if len(resp.Body) > 4096 && isTTY() {
+			pager := os.Getenv("PAGER")
+			if pager == "" {
+				pager = "less"
+			}
+			cmd := exec.Command(pager)
+			cmd.Stdin = strings.NewReader(string(resp.Body))
+			cmd.Stdout = os.Stdout
+			cmd.Run()
+			return
+		}
+
 		fmt.Println(string(resp.Body))
 	}
+}
+
+func isBinaryContentType(ct string) bool {
+	if ct == "" {
+		return false
+	}
+	ct = strings.ToLower(ct)
+	textTypes := []string{"text/", "application/json", "application/xml", "application/javascript"}
+	for _, t := range textTypes {
+		if strings.Contains(ct, t) {
+			return false
+		}
+	}
+	return true
+}
+
+func isTTY() bool {
+	return false // Simplified - pager not automatically invoked
 }
 
 func PrintRequest(req *model.Request) {
