@@ -66,29 +66,18 @@ func parseHTTPBlock(block string) (*model.Request, map[string]any, error) {
 	}
 	vars := make(map[string]any)
 
-	for i, line := range lines {
+	// First pass: collect all variable declarations
+	var requestLines []string
+	for _, line := range lines {
 		line = trimComment(line)
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 
-		// First non-comment line should be METHOD URL
-		if i == 0 {
-			parts := strings.Fields(line)
-			if len(parts) < 2 {
-				return nil, nil, fmt.Errorf("invalid request: %s", line)
-			}
-			req.Method = parts[0]
-			req.URL = parts[1]
-			continue
-		}
-
 		// Check for variable declarations @var=value or @var = value
 		if strings.HasPrefix(line, "@") {
-			// Remove @ and parse var = value
 			line = line[1:]
-			// Support both @VAR=value and @VAR = value
 			parts := strings.SplitN(line, "=", 2)
 			if len(parts) == 2 {
 				varName := strings.TrimSpace(parts[0])
@@ -97,6 +86,23 @@ func parseHTTPBlock(block string) (*model.Request, map[string]any, error) {
 					vars[varName] = varValue
 				}
 			}
+			continue
+		}
+
+		// This is a request line (method, headers, body)
+		requestLines = append(requestLines, line)
+	}
+
+	// Now parse request lines
+	for i, line := range requestLines {
+		// First line is METHOD URL
+		if i == 0 {
+			parts := strings.Fields(line)
+			if len(parts) < 2 {
+				return nil, nil, fmt.Errorf("invalid request: %s", line)
+			}
+			req.Method = parts[0]
+			req.URL = parts[1]
 			continue
 		}
 
