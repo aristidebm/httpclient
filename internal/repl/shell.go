@@ -172,10 +172,6 @@ func (ctx *ShellContext) handleLine(line string) error {
 		}
 	}
 
-	if cmd, ok := GetCommand(strings.Fields(line)[0]); ok {
-		return cmd.Run(ctx, strings.Fields(line)[1:])
-	}
-
 	return nil
 }
 
