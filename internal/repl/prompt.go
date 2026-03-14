@@ -23,12 +23,15 @@ func BuildPrompt(ctx *ShellContext) string {
 		user = "user"
 	}
 
-	// httpclient := color.New(color.FgHiBlack).Sprint("httpclient")
 	envPart := color.New(color.FgCyan).Sprintf("%s@%s", user, env.Name)
 	sessionPart := color.New(color.FgGreen).Sprint(session.Name)
+
+	if env.BaseURL != "" {
+		envPart = color.New(color.FgCyan).Sprintf("%s@%s (%s)", user, env.Name, env.BaseURL)
+	}
+
 	prompt := color.New(color.FgHiBlack).Sprint("› ")
 
-	// return "[httpclient : " + httpclient + " : " + envPart + " : " + sessionPart + "] " + prompt
 	return "[httpclient : " + envPart + " : " + sessionPart + "] " + prompt
 }
 
