@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"httpclient/internal/export"
 	"httpclient/internal/model"
@@ -104,6 +105,31 @@ func (c *exportCmd) Run(ctx *repl.ShellContext, args []string) error {
 }
 
 func (c *exportCmd) Complete(ctx *repl.ShellContext, partial string) []string {
+	fields := strings.Fields(partial)
+
+	if len(fields) == 1 {
+		// Complete format names
+		formats := []string{"json", "curl", "har", "http", "bruno"}
+		var result []string
+		for _, f := range formats {
+			if strings.HasPrefix(f, fields[0]) {
+				result = append(result, f)
+			}
+		}
+		return result
+	}
+
+	if len(fields) == 2 {
+		// Complete session names
+		var result []string
+		for _, s := range ctx.Tree.Sessions {
+			if strings.HasPrefix(s.Name, fields[1]) {
+				result = append(result, s.Name)
+			}
+		}
+		return result
+	}
+
 	return nil
 }
 

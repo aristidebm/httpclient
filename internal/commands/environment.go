@@ -39,9 +39,30 @@ func (c *envCmd) Run(ctx *repl.ShellContext, args []string) error {
 }
 
 func (c *envCmd) Complete(ctx *repl.ShellContext, partial string) []string {
-	if len(strings.Fields(partial)) == 1 {
+	fields := strings.Fields(partial)
+
+	if len(fields) == 1 {
 		return []string{"new", "set", "unset", "list", "show", "copy"}
 	}
+
+	subcmd := fields[0]
+	lastArg := ""
+	if len(fields) > 1 {
+		lastArg = fields[len(fields)-1]
+	}
+
+	switch subcmd {
+	case "set", "unset", "show", "copy":
+		// Complete environment names
+		var names []string
+		for name := range ctx.Tree.Environments {
+			if strings.HasPrefix(name, lastArg) {
+				names = append(names, name)
+			}
+		}
+		return names
+	}
+
 	return nil
 }
 

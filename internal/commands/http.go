@@ -237,6 +237,17 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 }
 
 func (h *httpCmd) Complete(ctx *repl.ShellContext, partial string) []string {
+	// Complete OpenAPI routes if spec is loaded
+	spec := ctx.CurrentSpec()
+	if spec != nil && partial != "" {
+		var routes []string
+		for _, r := range spec.Routes {
+			if strings.HasPrefix(r.Path, partial) {
+				routes = append(routes, r.Path)
+			}
+		}
+		return routes
+	}
 	return nil
 }
 
