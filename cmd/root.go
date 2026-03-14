@@ -27,6 +27,7 @@ var (
 	formFlag    bool
 	saveFlag    bool
 	timeFlag    bool
+	quietFlag   bool
 )
 
 var rootCmd = &cobra.Command{
@@ -236,7 +237,13 @@ func runOneShot(args []string) error {
 	}
 
 	// Print response
-	repl.PrintResponse(req.Response)
+	if quietFlag {
+		if len(req.Response.Body) > 0 {
+			fmt.Println(string(req.Response.Body))
+		}
+	} else {
+		repl.PrintResponse(req.Response)
+	}
 
 	// Auto-save binary if requested
 	if saveFlag {
@@ -302,4 +309,5 @@ func init() {
 	rootCmd.Flags().BoolVar(&formFlag, "form", false, "Send as form-encoded")
 	rootCmd.Flags().BoolVar(&saveFlag, "save", false, "Auto-save binary response")
 	rootCmd.Flags().BoolVar(&timeFlag, "time", false, "Print execution time")
+	rootCmd.Flags().BoolVarP(&quietFlag, "quiet", "q", false, "Suppress status line (for piping)")
 }
