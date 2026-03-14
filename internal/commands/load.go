@@ -59,9 +59,8 @@ func (c *loadCmd) Run(ctx *repl.ShellContext, args []string) error {
 			return fmt.Errorf("failed to load OpenAPI: %w", err)
 		}
 
-		// Convert to kin-openapi format for use in shell context
-		// For now just store routes info
-		ctx.OpenAPI = nil // Would need to convert spec to openapi3.T
+		ctx.Spec = spec
+		ctx.OpenAPI = nil // Keep for compatibility
 
 		repl.PrintSuccess(fmt.Sprintf("Loaded OpenAPI spec: %s (version: %s)", spec.Title, spec.Version))
 		fmt.Printf("Found %d routes\n", len(spec.Routes))

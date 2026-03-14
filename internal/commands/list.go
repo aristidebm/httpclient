@@ -2,7 +2,12 @@ package commands
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"sort"
+	"strings"
 
+	"httpclient/internal/input"
 	"httpclient/internal/repl"
 )
 
@@ -10,35 +15,87 @@ type listCmd struct{}
 
 func (c *listCmd) Name() string      { return "list" }
 func (c *listCmd) Aliases() []string { return nil }
-func (c *listCmd) Help() string      { return "List requests in current session" }
+func (c *listCmd) Help() string      { return "List routes from loaded OpenAPI spec: /list [filter]" }
 
 func (c *listCmd) Run(ctx *repl.ShellContext, args []string) error {
-	session := ctx.Tree.Current()
-	if session == nil {
-		return fmt.Errorf("no current session")
-	}
-
-	if len(session.Requests) == 0 {
-		fmt.Println("No requests in this session")
+	if ctx.Spec == nil {
+		fmt.Println("No spec loaded. Use /load <url-or-file>")
 		return nil
 	}
 
-	fmt.Printf("Requests in session %q:\n", session.Name)
-	fmt.Println()
-	for _, req := range session.Requests {
-		status := ""
-		if req.Response != nil {
-			status = fmt.Sprintf(" → %d %s", req.Response.StatusCode, req.Response.Status)
-		} else {
-			status = " (not executed)"
-		}
-		note := ""
-		if req.Note != "" {
-			note = fmt.Sprintf(" — %s", req.Note)
-		}
-		fmt.Printf("  [%s] %s %s%s%s\n", req.ID, req.Method, req.URL, status, note)
+	filter := ""
+	if len(args) > 0 {
+		filter = strings.ToLower(args[0])
 	}
 
+	routes := ctx.Spec.Routes
+	if filter != "" {
+		var filtered []input.Route
+		for _, r := range routes {
+			pathMatch := strings.Contains(strings.ToLower(r.Path), filter)
+			sumMatch := strings.Contains(strings.ToLower(r.Summary), filter)
+			tagMatch := false
+			for _, t := range r.Tags {
+				if strings.Contains(strings.ToLower(t), filter) {
+					tagMatch = true
+					break
+				}
+			}
+			if pathMatch || sumMatch || tagMatch {
+				filtered = append(filtered, r)
+			}
+		}
+		routes = filtered
+	}
+
+	// Group by tag
+	tagGroups := make(map[string][]input.Route)
+	var tags []string
+	for _, r := range routes {
+		if len(r.Tags) == 0 {
+			r.Tags = []string{"(no tag)"}
+		}
+		for _, tag := range r.Tags {
+			if _, ok := tagGroups[tag]; !ok {
+				tags = append(tags, tag)
+			}
+			tagGroups[tag] = append(tagGroups[tag], r)
+		}
+	}
+	sort.Strings(tags)
+
+	// Build output
+	var lines []string
+	for _, tag := range tags {
+		lines = append(lines, fmt.Sprintf("\n## %s\n", tag))
+		for _, r := range tagGroups[tag] {
+			method := r.Method
+			path := r.Path
+			summary := r.Summary
+			if summary != "" {
+				lines = append(lines, fmt.Sprintf("  %-7s %-40s %s", method, path, summary))
+			} else {
+				lines = append(lines, fmt.Sprintf("  %-7s %s", method, path))
+			}
+		}
+	}
+
+	output := strings.Join(lines, "\n")
+
+	// Use pager if output is long
+	if len(output) > 4096 {
+		pager := os.Getenv("PAGER")
+		if pager == "" {
+			pager = "less"
+		}
+		cmd := exec.Command(pager)
+		cmd.Stdin = strings.NewReader(output)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
+
+	fmt.Println(output)
 	return nil
 }
 

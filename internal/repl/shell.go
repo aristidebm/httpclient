@@ -6,17 +6,19 @@ import (
 	"os/exec"
 	"strings"
 
-	"httpclient/internal/executor"
-	"httpclient/internal/model"
-	"httpclient/internal/session"
 	"github.com/chzyer/readline"
 	openapi3 "github.com/getkin/kin-openapi/openapi3"
+	"httpclient/internal/executor"
+	"httpclient/internal/input"
+	"httpclient/internal/model"
+	"httpclient/internal/session"
 )
 
 type ShellContext struct {
 	Tree      *model.SessionTree
 	Executor  *executor.Client
 	OpenAPI   *openapi3.T
+	Spec      *input.Spec
 	Vars      map[string]any
 	LastResp  *model.Response
 	LastData  any
