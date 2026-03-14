@@ -17,30 +17,56 @@ func (c *varsCmd) Help() string {
 }
 
 func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
-	// Manually parse flags (before subcommand)
 	scope := ""
-	rem := args
 
-	for len(rem) > 0 && strings.HasPrefix(rem[0], "-") {
-		flag := rem[0]
+	// Find subcommand position
+	subcmdIdx := -1
+	for i, arg := range args {
+		if !strings.HasPrefix(arg, "-") || arg == "-" {
+			subcmdIdx = i
+			break
+		}
+	}
+
+	// Parse flags before subcommand
+	for i := 0; i < subcmdIdx && subcmdIdx > 0; i++ {
+		flag := args[i]
 		if flag == "--session" || flag == "-session" {
 			scope = "session"
 		} else if flag == "--env" || flag == "-env" {
 			scope = "env"
 		} else if flag == "--shell" || flag == "-shell" {
 			scope = "shell"
-		} else {
-			break // Unknown flag, stop parsing
 		}
-		rem = rem[1:]
 	}
 
-	// If no remaining args, just list
-	if len(rem) == 0 {
+	// If no subcommand found, just list
+	if subcmdIdx == -1 || subcmdIdx >= len(args) {
 		return c.listVars(ctx, scope)
 	}
 
-	subcmd := rem[0]
+	subcmd := args[subcmdIdx]
+	rem := args[subcmdIdx+1:]
+
+	// Parse flags after subcommand
+	for _, flag := range rem {
+		if flag == "--session" || flag == "-session" {
+			scope = "session"
+		} else if flag == "--env" || flag == "-env" {
+			scope = "env"
+		} else if flag == "--shell" || flag == "-shell" {
+			scope = "shell"
+		}
+	}
+
+	// Filter rem to get only non-flag args
+	var nonFlagArgs []string
+	for _, arg := range rem {
+		if !strings.HasPrefix(arg, "-") {
+			nonFlagArgs = append(nonFlagArgs, arg)
+		}
+	}
+
 	key := ""
 	value := ""
 
@@ -49,11 +75,11 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return c.listVars(ctx, scope)
 
 	case "set", "s":
-		if len(rem) < 3 {
+		if len(nonFlagArgs) < 2 {
 			return fmt.Errorf("usage: /vars set [--session|--env|--shell] <key> <value>")
 		}
-		key = rem[1]
-		value = rem[2]
+		key = nonFlagArgs[0]
+		value = nonFlagArgs[1]
 		// Use scope from flag, or default to session if not specified
 		if scope == "" {
 			scope = "session"
@@ -61,20 +87,20 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return c.setVar(ctx, scope, key, value)
 
 	case "unset", "delete", "u":
-		if len(rem) < 2 {
+		if len(nonFlagArgs) < 1 {
 			return fmt.Errorf("usage: /vars unset [--session|--env|--shell] <key>")
 		}
-		key = rem[1]
+		key = nonFlagArgs[0]
 		if scope == "" {
 			scope = "session"
 		}
 		return c.unsetVar(ctx, scope, key)
 
 	case "get", "g":
-		if len(rem) < 2 {
+		if len(nonFlagArgs) < 1 {
 			return fmt.Errorf("usage: /vars get <key>")
 		}
-		key = rem[1]
+		key = nonFlagArgs[0]
 		return c.getVar(ctx, key)
 
 	default:
