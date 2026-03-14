@@ -65,9 +65,25 @@ func (c *Client) Execute(req *model.Request, env *model.Environment) error {
 		}
 	}
 
+	// Convert req.Vars to map[string]any
+	reqVars := make(map[string]any)
+	if req.Vars != nil {
+		for k, v := range req.Vars {
+			reqVars[k] = v.Value
+		}
+	}
+
+	// Convert env.Vars to map[string]any
+	envVars := make(map[string]any)
+	if env.Vars != nil {
+		for k, v := range env.Vars {
+			envVars[k] = v.Value
+		}
+	}
+
 	varLayers := []map[string]any{
-		req.Vars,
-		env.Vars,
+		reqVars,
+		envVars,
 	}
 	resolvedURL, _ := model.ResolveVars(fullURL, varLayers...)
 	if resolvedURL == "" {

@@ -14,7 +14,7 @@ func NewSessionTree() *SessionTree {
 		Name:    "local",
 		BaseURL: "",
 		Headers: make(map[string]string),
-		Vars:    make(map[string]any),
+		Vars:    make(Variables),
 	}
 	sess := &Session{
 		ID:              "default",
@@ -23,7 +23,7 @@ func NewSessionTree() *SessionTree {
 		ParentID:        "",
 		Requests:        make([]*Request, 0),
 		HeaderOverrides: make(map[string]string),
-		VarOverrides:    make(map[string]any),
+		Vars:            make(Variables),
 		CreatedAt:       time.Now(),
 	}
 	return &SessionTree{

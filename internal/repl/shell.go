@@ -18,7 +18,7 @@ type ShellContext struct {
 	Tree      *model.SessionTree
 	Executor  *executor.Client
 	OpenAPI   *openapi3.T
-	Vars      map[string]any
+	Vars      model.Variables
 	LastResp  *model.Response
 	LastData  any
 	LastReqID string
@@ -70,7 +70,7 @@ func NewShellContext() *ShellContext {
 	return &ShellContext{
 		Tree:     tree,
 		Executor: executor.NewClient(30 * 1000 * 1000 * 1000), // 30 seconds
-		Vars:     make(map[string]any),
+		Vars:     make(model.Variables),
 	}
 }
 
@@ -188,7 +188,7 @@ func isValidVarName(name string) bool {
 
 func (ctx *ShellContext) handleAssignment(lhs, rhs string) error {
 	if rhs == "d" || rhs == "last" {
-		ctx.Vars[lhs] = ctx.LastData
+		ctx.Vars.Set(lhs, ctx.LastData, model.VarScopeShell)
 		return nil
 	}
 
@@ -196,7 +196,7 @@ func (ctx *ShellContext) handleAssignment(lhs, rhs string) error {
 		return Dispatch(ctx, strings.TrimPrefix(rhs, "/"))
 	}
 
-	ctx.Vars[lhs] = rhs
+	ctx.Vars.Set(lhs, rhs, model.VarScopeShell)
 	return nil
 }
 
@@ -206,7 +206,12 @@ func (ctx *ShellContext) handleShell(cmd string) error {
 		return nil
 	}
 
-	resolved, _ := model.ResolveVars(cmd, ctx.Vars)
+	// Convert Variables to map[string]any for ResolveVars
+	varsMap := make(map[string]any)
+	for k, v := range ctx.Vars {
+		varsMap[k] = v.Value
+	}
+	resolved, _ := model.ResolveVars(cmd, varsMap)
 
 	parts, err := splitShellCommand(resolved)
 	if err != nil {

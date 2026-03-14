@@ -89,7 +89,7 @@ func parseSingleCurl(cmd string) (*model.Request, error) {
 		Headers:     make(map[string]string),
 		Params:      make(map[string]string),
 		ContentType: "application/json",
-		Vars:        make(map[string]any),
+		Vars:        make(model.Variables),
 	}
 
 	// Extract URL from --url or last argument

@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"httpclient/internal/repl"
 	"github.com/itchyny/gojq"
+	"httpclient/internal/model"
+	"httpclient/internal/repl"
 )
 
 type jqCmd struct{}
@@ -161,7 +162,7 @@ func (c *updateCmd) Run(ctx *repl.ShellContext, args []string) error {
 	if varName == "" {
 		ctx.LastData = parsed
 	} else {
-		ctx.Vars[varName] = parsed
+		ctx.Vars.Set(varName, parsed, model.VarScopeShell)
 	}
 
 	fmt.Println("Updated")
@@ -237,7 +238,7 @@ func (c *editCmd) Run(ctx *repl.ShellContext, args []string) error {
 		parsed = string(newContent)
 	}
 
-	ctx.Vars[varName] = parsed
+	ctx.Vars.Set(varName, parsed, model.VarScopeShell)
 	fmt.Println("Updated")
 	return nil
 }

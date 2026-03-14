@@ -38,7 +38,7 @@ type Request struct {
 	ExecutedAt  time.Time
 	Duration    time.Duration
 	Note        string
-	Vars        map[string]any
+	Vars        Variables
 }
 
 type Response struct {
@@ -92,9 +92,11 @@ func (r *Request) Clone() *Request {
 	}
 	body := make([]byte, len(r.Body))
 	copy(body, r.Body)
-	vars := make(map[string]any)
-	for k, v := range r.Vars {
-		vars[k] = v
+	vars := make(Variables)
+	if r.Vars != nil {
+		for k, v := range r.Vars {
+			vars[k] = v
+		}
 	}
 	return &Request{
 		ID:          r.ID,

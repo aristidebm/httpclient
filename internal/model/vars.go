@@ -5,9 +5,72 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var varPattern = regexp.MustCompile(`\{([^}]+)\}`)
+
+type VarScope string
+
+const (
+	VarScopeEnv     VarScope = "env"
+	VarScopeSession VarScope = "session"
+	VarScopeShell   VarScope = "shell"
+)
+
+type Variable struct {
+	Name    string
+	Value   any
+	Scope   VarScope
+	Created time.Time
+	Updated time.Time
+}
+
+type Variables map[string]*Variable
+
+func (v Variables) Set(key string, value any, scope VarScope) {
+	now := time.Now()
+	if existing, ok := v[key]; ok {
+		existing.Value = value
+		existing.Scope = scope
+		existing.Updated = now
+	} else {
+		v[key] = &Variable{
+			Name:    key,
+			Value:   value,
+			Scope:   scope,
+			Created: now,
+			Updated: now,
+		}
+	}
+}
+
+func (v Variables) Get(key string) (*Variable, bool) {
+	variable, ok := v[key]
+	return variable, ok
+}
+
+func (v Variables) Delete(key string) {
+	delete(v, key)
+}
+
+func (v Variables) List() []*Variable {
+	vars := make([]*Variable, 0, len(v))
+	for _, v := range v {
+		vars = append(vars, v)
+	}
+	return vars
+}
+
+func (v Variables) ListByScope(scope VarScope) []*Variable {
+	var vars []*Variable
+	for _, variable := range v {
+		if variable.Scope == scope {
+			vars = append(vars, variable)
+		}
+	}
+	return vars
+}
 
 func ResolveVars(template string, layers ...map[string]any) (string, []string) {
 	var unresolved []string

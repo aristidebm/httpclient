@@ -117,6 +117,12 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return showOpenAPIDoc(ctx, h.method, endpoint)
 	}
 
+	// Convert ctx.Vars to map[string]any for ResolveVars
+	shellVars := make(map[string]any)
+	for k, v := range ctx.Vars {
+		shellVars[k] = v.Value
+	}
+
 	req := &model.Request{
 		Method:      h.method,
 		URL:         endpoint,
@@ -133,7 +139,7 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 			req.Params[parts[0]] = parts[1]
 		} else if strings.Contains(p, "=") {
 			parts := strings.SplitN(p, "=", 2)
-			resolved, _ := model.ResolveVars(parts[1], ctx.Vars)
+			resolved, _ := model.ResolveVars(parts[1], shellVars)
 			req.Params[parts[0]] = resolved
 		}
 	}
@@ -160,12 +166,12 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 		for _, d := range data {
 			if strings.HasSuffix(d, "=") {
 				varName := strings.TrimSuffix(d, "=")
-				if val, ok := ctx.Vars[varName]; ok {
-					if strVal, ok := val.(string); ok {
+				if val, ok := ctx.Vars.Get(varName); ok {
+					if strVal, ok := val.Value.(string); ok {
 						req.Body = []byte(strVal)
 						isSplat = true
 					} else {
-						req.Body, _ = json.Marshal(val)
+						req.Body, _ = json.Marshal(val.Value)
 						isSplat = true
 					}
 				}
@@ -177,7 +183,7 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 				bodyMap[parts[0]] = parts[1]
 			} else if strings.Contains(d, "=") {
 				parts := strings.SplitN(d, "=", 2)
-				resolved, _ := model.ResolveVars(parts[1], ctx.Vars)
+				resolved, _ := model.ResolveVars(parts[1], shellVars)
 				bodyMap[parts[0]] = resolved
 			}
 		}

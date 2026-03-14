@@ -37,6 +37,14 @@ func (e *JSONExporter) Export(session *model.Session, env *model.Environment) ([
 		Vars    map[string]any    `json:"vars,omitempty"`
 	}
 
+	// Convert Variables to map[string]any for export
+	varsMap := make(map[string]any)
+	if env.Vars != nil {
+		for k, v := range env.Vars {
+			varsMap[k] = v.Value
+		}
+	}
+
 	requests := make([]Req, len(session.Requests))
 	for i, r := range session.Requests {
 		body := ""
@@ -86,7 +94,7 @@ func (e *JSONExporter) Export(session *model.Session, env *model.Environment) ([
 			Name:    env.Name,
 			BaseURL: env.BaseURL,
 			Headers: env.Headers,
-			Vars:    env.Vars,
+			Vars:    varsMap,
 		}
 	}
 

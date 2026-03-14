@@ -106,7 +106,7 @@ func sessionNew(ctx *repl.ShellContext, args []string) error {
 		ParentID:        "",
 		Requests:        []*model.Request{},
 		HeaderOverrides: make(map[string]string),
-		VarOverrides:    make(map[string]any),
+		Vars:            make(model.Variables),
 		CreatedAt:       time.Now(),
 	}
 
@@ -152,7 +152,7 @@ func sessionBranch(ctx *repl.ShellContext, args []string) error {
 		ParentID:        current.ID,
 		Requests:        []*model.Request{},
 		HeaderOverrides: make(map[string]string),
-		VarOverrides:    make(map[string]any),
+		Vars:            make(model.Variables),
 		OpenAPISpec:     current.OpenAPISpec, // Inherit OpenAPI spec from parent
 		CreatedAt:       time.Now(),
 	}

@@ -8,7 +8,7 @@ type Environment struct {
 	Name    string
 	BaseURL string
 	Headers map[string]string
-	Vars    map[string]any
+	Vars    Variables
 }
 
 func (e *Environment) Clone() *Environment {
@@ -16,7 +16,7 @@ func (e *Environment) Clone() *Environment {
 	for k, v := range e.Headers {
 		headers[k] = v
 	}
-	vars := make(map[string]any)
+	vars := make(Variables)
 	for k, v := range e.Vars {
 		vars[k] = v
 	}
@@ -29,8 +29,8 @@ func (e *Environment) Clone() *Environment {
 }
 
 func (e *Environment) Resolve(key string) (any, bool) {
-	if v, ok := e.Vars[key]; ok {
-		return v, true
+	if v, ok := e.Vars.Get(key); ok {
+		return v.Value, true
 	}
 	if v, ok := e.Headers[key]; ok {
 		return v, true

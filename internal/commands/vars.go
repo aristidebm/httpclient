@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"httpclient/internal/model"
 	"httpclient/internal/repl"
 )
 
@@ -112,14 +113,14 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 			active := true
 			session := ctx.Tree.Current()
 			if session != nil {
-				if _, ok := session.VarOverrides[k]; ok {
+				if _, ok := session.Vars[k]; ok {
 					active = false
 				}
 			}
 
 			entries = append(entries, varEntry{
 				key:    k,
-				value:  fmt.Sprintf("%v", v),
+				value:  fmt.Sprintf("%v", v.Value),
 				scope:  "env:" + env.Name,
 				active: active,
 			})
@@ -129,10 +130,10 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 	// Session vars
 	session := ctx.Tree.Current()
 	if session != nil && (filterScope == "" || filterScope == "session") {
-		for k, v := range session.VarOverrides {
+		for k, v := range session.Vars {
 			entries = append(entries, varEntry{
 				key:    k,
-				value:  fmt.Sprintf("%v", v),
+				value:  fmt.Sprintf("%v", v.Value),
 				scope:  "session",
 				active: true,
 			})
@@ -167,10 +168,7 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string) error
 		if session == nil {
 			return fmt.Errorf("no current session")
 		}
-		if session.VarOverrides == nil {
-			session.VarOverrides = make(map[string]any)
-		}
-		session.VarOverrides[key] = value
+		session.Vars.Set(key, value, model.VarScopeSession)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (session)", key, value))
 
 	case "env":
@@ -178,11 +176,11 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string) error
 		if env == nil {
 			return fmt.Errorf("no current environment")
 		}
-		env.Vars[key] = value
+		env.Vars.Set(key, value, model.VarScopeEnv)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (env: %s)", key, value, env.Name))
 
 	case "shell":
-		ctx.Vars[key] = value
+		ctx.Vars.Set(key, value, model.VarScopeShell)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (shell)", key, value))
 	}
 
@@ -199,7 +197,7 @@ func (c *varsCmd) getVar(ctx *repl.ShellContext, key string) error {
 	// Check session overrides
 	session := ctx.Tree.Current()
 	if session != nil {
-		if v, ok := session.VarOverrides[key]; ok {
+		if v, ok := session.Vars[key]; ok {
 			fmt.Printf("session.%s = %v\n", key, v)
 			return nil
 		}
@@ -222,9 +220,9 @@ func (c *varsCmd) unsetVar(ctx *repl.ShellContext, scope, key string) error {
 
 	switch scope {
 	case "session":
-		if session != nil && session.VarOverrides != nil {
-			if _, ok := session.VarOverrides[key]; ok {
-				delete(session.VarOverrides, key)
+		if session != nil && session.Vars != nil {
+			if _, ok := session.Vars[key]; ok {
+				delete(session.Vars, key)
 				repl.PrintSuccess(fmt.Sprintf("Unset %s (session)", key))
 				return nil
 			}
@@ -277,7 +275,7 @@ func (c *varsCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	}
 	session := ctx.Tree.Current()
 	if session != nil {
-		for k := range session.VarOverrides {
+		for k := range session.Vars {
 			names = append(names, k)
 		}
 	}

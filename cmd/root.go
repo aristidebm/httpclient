@@ -69,7 +69,7 @@ func runShell(loginURL *string) {
 		env := &model.Environment{
 			Name:    "default",
 			BaseURL: *loginURL,
-			Vars:    make(map[string]any),
+			Vars:    make(model.Variables),
 			Headers: make(map[string]string),
 		}
 		ctx.Tree.Environments["default"] = env
@@ -131,7 +131,7 @@ func runOneShot(args []string) error {
 	env := &model.Environment{
 		Name:    "oneshot",
 		BaseURL: "",
-		Vars:    make(map[string]any),
+		Vars:    make(model.Variables),
 		Headers: make(map[string]string),
 	}
 
@@ -149,7 +149,7 @@ func runOneShot(args []string) error {
 	}
 
 	if userFlag != "" {
-		env.Vars["user"] = userFlag
+		env.Vars.Set("user", userFlag, model.VarScopeEnv)
 	}
 
 	// Parse params (-p)
@@ -160,10 +160,7 @@ func runOneShot(args []string) error {
 			parts = strings.SplitN(p, ":", 2)
 		}
 		if len(parts) == 2 {
-			if env.Vars == nil {
-				env.Vars = make(map[string]any)
-			}
-			env.Vars[parts[0]] = parts[1]
+			env.Vars.Set(parts[0], parts[1], model.VarScopeEnv)
 		}
 	}
 

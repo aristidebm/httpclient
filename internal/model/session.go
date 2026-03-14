@@ -12,7 +12,7 @@ type Session struct {
 	ParentID        string
 	Requests        []*Request
 	HeaderOverrides map[string]string
-	VarOverrides    map[string]any
+	Vars            Variables
 	OpenAPISpec     *OpenAPISpec // stored as pointer for JSON serialization
 	CreatedAt       time.Time
 }

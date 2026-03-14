@@ -82,7 +82,7 @@ func envNew(ctx *repl.ShellContext, args []string) error {
 		Name:    name,
 		BaseURL: baseURL,
 		Headers: make(map[string]string),
-		Vars:    make(map[string]any),
+		Vars:    make(model.Variables),
 	}
 	env.SetBaseURL(baseURL)
 
@@ -117,7 +117,7 @@ func envSet(ctx *repl.ShellContext, args []string) error {
 		env.Headers[key] = value
 		repl.PrintSuccess(fmt.Sprintf("Set header %s=%s in environment %q", key, value, name))
 	} else {
-		env.Vars[key] = value
+		env.Vars.Set(key, value, model.VarScopeEnv)
 		repl.PrintSuccess(fmt.Sprintf("Set var %s=%s in environment %q", key, value, name))
 	}
 

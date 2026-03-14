@@ -69,7 +69,7 @@ type SessionForJSON struct {
 	ParentID        string            `json:"parentId"`
 	Requests        []*RequestForJSON `json:"requests"`
 	HeaderOverrides map[string]string `json:"headerOverrides"`
-	VarOverrides    map[string]any    `json:"varOverrides"`
+	Vars            model.Variables   `json:"vars"`
 	CreatedAt       string            `json:"createdAt"`
 }
 
@@ -128,7 +128,7 @@ func SaveTree(tree *model.SessionTree) error {
 			ParentID:        sess.ParentID,
 			Requests:        reqs,
 			HeaderOverrides: sess.HeaderOverrides,
-			VarOverrides:    sess.VarOverrides,
+			Vars:            sess.Vars,
 			CreatedAt:       sess.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		}
 	}
@@ -203,7 +203,7 @@ func LoadTree() (*model.SessionTree, error) {
 			ParentID:        jsonSess.ParentID,
 			Requests:        reqs,
 			HeaderOverrides: jsonSess.HeaderOverrides,
-			VarOverrides:    jsonSess.VarOverrides,
+			Vars:            jsonSess.Vars,
 			CreatedAt:       createdAt,
 		}
 	}
