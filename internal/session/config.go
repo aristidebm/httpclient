@@ -11,6 +11,7 @@ type Config struct {
 	DefaultEnv    string `yaml:"default_env"`
 	DefaultEditor string `yaml:"default_editor"`
 	HistoryFile   string `yaml:"history_file"`
+	Pager         string `yaml:"pager"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -26,6 +27,7 @@ func LoadConfig() (*Config, error) {
 				DefaultEnv:    "local",
 				DefaultEditor: "",
 				HistoryFile:   "~/.httpclient/history",
+				Pager:         "less",
 			}, nil
 		}
 		return nil, err
@@ -38,6 +40,9 @@ func LoadConfig() (*Config, error) {
 
 	if cfg.HistoryFile == "" {
 		cfg.HistoryFile = "~/.httpclient/history"
+	}
+	if cfg.Pager == "" {
+		cfg.Pager = "less"
 	}
 
 	return &cfg, nil
