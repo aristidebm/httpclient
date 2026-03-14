@@ -155,21 +155,15 @@ func envUnset(ctx *repl.ShellContext, args []string) error {
 }
 
 func envList(ctx *repl.ShellContext) error {
-	fmt.Printf("%-15s %-40s %-10s %-10s\n", "NAME", "BASE URL", "HEADERS", "VARS")
-	fmt.Println(strings.Repeat("-", 80))
-
-	for _, env := range ctx.Tree.Environments {
-		baseURL := env.BaseURL
-		if len(baseURL) > 40 {
-			baseURL = baseURL[:37] + "..."
+	fmt.Println("NAME             VARS")
+	fmt.Println("───────────────────────────────────────────────────────────────")
+	for name, env := range ctx.Tree.Environments {
+		count := 0
+		if env.Vars != nil {
+			count = len(env.Vars)
 		}
-		fmt.Printf("%-15s %-40s %-10d %-10d\n",
-			env.Name,
-			baseURL,
-			len(env.Headers),
-			len(env.Vars))
+		fmt.Printf("%-16s %d\n", name, count)
 	}
-
 	return nil
 }
 
@@ -179,29 +173,29 @@ func envShow(ctx *repl.ShellContext, args []string) error {
 	}
 
 	name := args[0]
-
 	env, ok := ctx.Tree.Environments[name]
 	if !ok {
 		return fmt.Errorf("environment %q not found", name)
 	}
 
 	fmt.Printf("Name: %s\n", env.Name)
-	fmt.Printf("Base URL: %s\n", env.BaseURL)
-
-	if len(env.Headers) > 0 {
-		fmt.Println("\nHeaders:")
+	fmt.Printf("BaseURL: %s\n", env.BaseURL)
+	fmt.Println("\nHeaders:")
+	if len(env.Headers) == 0 {
+		fmt.Println("  (none)")
+	} else {
 		for k, v := range env.Headers {
 			fmt.Printf("  %s: %s\n", k, v)
 		}
 	}
-
-	if len(env.Vars) > 0 {
-		fmt.Println("\nVariables:")
+	fmt.Println("\nVariables:")
+	if env.Vars == nil || len(env.Vars) == 0 {
+		fmt.Println("  (none)")
+	} else {
 		for k, v := range env.Vars {
-			fmt.Printf("  %s: %v\n", k, v)
+			fmt.Printf("  %s: %v (public=%v)\n", k, v.Value, v.Public)
 		}
 	}
-
 	return nil
 }
 

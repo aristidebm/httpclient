@@ -22,6 +22,7 @@ type Variable struct {
 	Name    string
 	Value   any
 	Scope   VarScope
+	Public  bool // if false, variable doesn't appear in listings
 	Created time.Time
 	Updated time.Time
 }
@@ -39,9 +40,20 @@ func (v Variables) Set(key string, value any, scope VarScope) {
 			Name:    key,
 			Value:   value,
 			Scope:   scope,
+			Public:  false,
 			Created: now,
 			Updated: now,
 		}
+	}
+}
+
+func (v Variables) SetPublic(key string, public bool) {
+	if v == nil {
+		return
+	}
+	if existing, ok := v[key]; ok {
+		existing.Public = public
+		existing.Updated = time.Now()
 	}
 }
 
