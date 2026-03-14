@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"flag"
 	"fmt"
 	"strings"
 
@@ -11,57 +12,70 @@ type varsCmd struct{}
 
 func (c *varsCmd) Name() string      { return "vars" }
 func (c *varsCmd) Aliases() []string { return nil }
-func (c *varsCmd) Help() string {
-	return "Manage variables: /vars [list|set|unset|get] [scope] [key] [value]"
-}
+func (c *varsCmd) Help() string      { return "Manage variables: /vars [flags] [key] [value]" }
 
 func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
-	if len(args) < 1 {
-		return c.listVars(ctx, "")
+	fs := flag.NewFlagSet("vars", flag.ContinueOnError)
+	fs.Usage = func() {
+		fmt.Println("Usage: /vars [flags] [key] [value]")
+		fmt.Println("Flags:")
+		fmt.Println("  --session  Variables scoped to current session (default)")
+		fmt.Println("  --env      Variables scoped to current environment")
+		fmt.Println("  --shell    Shell-level variables")
+		fmt.Println("\nExamples:")
+		fmt.Println("  /vars                    # list all variables")
+		fmt.Println("  /vars foo                # get value of 'foo'")
+		fmt.Println("  /vars foo bar            # set foo=bar in session scope")
+		fmt.Println("  /vars --env foo bar      # set foo=bar in environment")
+		fmt.Println("  /vars --shell foo bar    # set foo=bar in shell")
+		fmt.Println("  /vars --unset foo        # unset foo (from session)")
 	}
 
-	subcmd := args[0]
+	sessionScope := fs.Bool("session", false, "Session scope (default)")
+	envScope := fs.Bool("env", false, "Environment scope")
+	shellScope := fs.Bool("shell", false, "Shell scope")
+	unset := fs.Bool("unset", false, "Unset variable")
 
-	switch subcmd {
-	case "list", "ls", "l":
-		scope := ""
-		if len(args) > 1 {
-			scope = args[1]
-		}
+	_ = sessionScope // default scope, kept for flag completeness
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	// Determine scope
+	scope := "session" // default
+	if *envScope {
+		scope = "env"
+	} else if *shellScope {
+		scope = "shell"
+	}
+
+	key := fs.Arg(0)
+	value := fs.Arg(1)
+
+	// Just list if no arguments
+	if key == "" && !*unset {
 		return c.listVars(ctx, scope)
-
-	case "set", "s":
-		if len(args) < 3 {
-			return fmt.Errorf("usage: /vars set [session|env] <key> <value>")
-		}
-		scope := "session"
-		key := args[1]
-		value := args[2]
-		if len(args) > 3 {
-			scope = args[1]
-			key = args[2]
-			value = args[3]
-		}
-		return c.setVar(ctx, scope, key, value)
-
-	case "get", "g":
-		if len(args) < 2 {
-			return fmt.Errorf("usage: /vars get <key>")
-		}
-		return c.getVar(ctx, args[1])
-
-	case "unset", "u", "delete", "d":
-		if len(args) < 2 {
-			return fmt.Errorf("usage: /vars unset <key>")
-		}
-		return c.unsetVar(ctx, args[1])
-
-	default:
-		return fmt.Errorf("unknown subcommand: %s", subcmd)
 	}
+
+	// Unset
+	if *unset {
+		if key == "" {
+			return fmt.Errorf("key required for unset")
+		}
+		return c.unsetVar(ctx, scope, key)
+	}
+
+	// Get
+	if value == "" {
+		return c.getVar(ctx, key)
+	}
+
+	// Set
+	return c.setVar(ctx, scope, key, value)
 }
 
-func (c *varsCmd) listVars(ctx *repl.ShellContext, scope string) error {
+func (c *varsCmd) listVars(ctx *repl.ShellContext, defaultScope string) error {
 	fmt.Println("=== Shell Variables ===")
 	if len(ctx.Vars) == 0 {
 		fmt.Println("  (none)")
@@ -71,23 +85,19 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, scope string) error {
 		}
 	}
 
-	if scope == "" || scope == "env" {
-		env := ctx.Tree.CurrentEnv()
-		if env != nil && len(env.Vars) > 0 {
-			fmt.Println("\n=== Environment Variables (", env.Name, ") ===")
-			for k, v := range env.Vars {
-				fmt.Printf("  %s = %v\n", k, v)
-			}
+	env := ctx.Tree.CurrentEnv()
+	if env != nil && len(env.Vars) > 0 {
+		fmt.Printf("\n=== Environment Variables (%s) ===\n", env.Name)
+		for k, v := range env.Vars {
+			fmt.Printf("  %s = %v\n", k, v)
 		}
 	}
 
-	if scope == "" || scope == "session" {
-		session := ctx.Tree.Current()
-		if session != nil && len(session.VarOverrides) > 0 {
-			fmt.Println("\n=== Session Overrides (", session.Name, ") ===")
-			for k, v := range session.VarOverrides {
-				fmt.Printf("  %s = %v\n", k, v)
-			}
+	session := ctx.Tree.Current()
+	if session != nil && len(session.VarOverrides) > 0 {
+		fmt.Printf("\n=== Session Variables (%s) ===\n", session.Name)
+		for k, v := range session.VarOverrides {
+			fmt.Printf("  %s = %v\n", k, v)
 		}
 	}
 
@@ -106,7 +116,7 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string) error
 			session.VarOverrides = make(map[string]any)
 		}
 		session.VarOverrides[key] = value
-		repl.PrintSuccess(fmt.Sprintf("Set session variable %s = %s", key, value))
+		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (session)", key, value))
 
 	case "env":
 		env := ctx.Tree.CurrentEnv()
@@ -114,12 +124,11 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string) error
 			return fmt.Errorf("no current environment")
 		}
 		env.Vars[key] = value
-		repl.PrintSuccess(fmt.Sprintf("Set environment variable %s = %s (in %s)", key, value, env.Name))
+		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (env: %s)", key, value, env.Name))
 
-	default:
-		// Shell variable (default)
+	case "shell":
 		ctx.Vars[key] = value
-		repl.PrintSuccess(fmt.Sprintf("Set shell variable %s = %s", key, value))
+		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (shell)", key, value))
 	}
 
 	return nil
@@ -153,77 +162,68 @@ func (c *varsCmd) getVar(ctx *repl.ShellContext, key string) error {
 	return fmt.Errorf("variable %q not found", key)
 }
 
-func (c *varsCmd) unsetVar(ctx *repl.ShellContext, key string) error {
+func (c *varsCmd) unsetVar(ctx *repl.ShellContext, scope, key string) error {
 	session := ctx.Tree.Current()
 
-	// Try shell vars first
-	if _, ok := ctx.Vars[key]; ok {
-		delete(ctx.Vars, key)
-		repl.PrintSuccess(fmt.Sprintf("Unset shell variable %s", key))
-		return nil
-	}
+	switch scope {
+	case "session":
+		if session != nil && session.VarOverrides != nil {
+			if _, ok := session.VarOverrides[key]; ok {
+				delete(session.VarOverrides, key)
+				repl.PrintSuccess(fmt.Sprintf("Unset %s (session)", key))
+				return nil
+			}
+		}
+		return fmt.Errorf("variable %q not found in session", key)
 
-	// Try session overrides
-	if session != nil && session.VarOverrides != nil {
-		if _, ok := session.VarOverrides[key]; ok {
-			delete(session.VarOverrides, key)
-			repl.PrintSuccess(fmt.Sprintf("Unset session variable %s", key))
+	case "env":
+		env := ctx.Tree.CurrentEnv()
+		if env != nil {
+			if _, ok := env.Vars[key]; ok {
+				delete(env.Vars, key)
+				repl.PrintSuccess(fmt.Sprintf("Unset %s (env: %s)", key, env.Name))
+				return nil
+			}
+		}
+		return fmt.Errorf("variable %q not found in environment", key)
+
+	case "shell":
+		if _, ok := ctx.Vars[key]; ok {
+			delete(ctx.Vars, key)
+			repl.PrintSuccess(fmt.Sprintf("Unset %s (shell)", key))
 			return nil
 		}
+		return fmt.Errorf("variable %q not found in shell", key)
 	}
 
-	// Try environment vars
-	env := ctx.Tree.CurrentEnv()
-	if env != nil {
-		if _, ok := env.Vars[key]; ok {
-			delete(env.Vars, key)
-			repl.PrintSuccess(fmt.Sprintf("Unset environment variable %s (in %s)", key, env.Name))
-			return nil
-		}
-	}
-
-	return fmt.Errorf("variable %q not found", key)
+	return nil
 }
 
 func (c *varsCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	fields := strings.Fields(partial)
 
-	if len(fields) == 0 {
-		return []string{"list", "set", "get", "unset"}
+	if len(fields) <= 1 {
+		return []string{"--session", "--env", "--shell", "--unset"}
 	}
 
-	if len(fields) == 1 {
-		return []string{"list", "set", "get", "unset"}
+	// Complete variable names
+	var names []string
+	for k := range ctx.Vars {
+		names = append(names, k)
 	}
-
-	if len(fields) == 2 {
-		subcmd := fields[0]
-		if subcmd == "set" {
-			return []string{"session", "env"}
-		}
-		if subcmd == "get" || subcmd == "unset" {
-			// Complete variable names
-			var names []string
-			for k := range ctx.Vars {
-				names = append(names, k)
-			}
-			session := ctx.Tree.Current()
-			if session != nil {
-				for k := range session.VarOverrides {
-					names = append(names, k)
-				}
-			}
-			env := ctx.Tree.CurrentEnv()
-			if env != nil {
-				for k := range env.Vars {
-					names = append(names, k)
-				}
-			}
-			return names
+	session := ctx.Tree.Current()
+	if session != nil {
+		for k := range session.VarOverrides {
+			names = append(names, k)
 		}
 	}
-
-	return nil
+	env := ctx.Tree.CurrentEnv()
+	if env != nil {
+		for k := range env.Vars {
+			names = append(names, k)
+		}
+	}
+	return names
 }
 
 func init() {
