@@ -17,51 +17,73 @@ func (c *varsCmd) Help() string {
 }
 
 func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
-	if len(args) < 1 {
-		return c.listVars(ctx, "session")
-	}
-
-	subcmd := args[0]
-
-	// Parse remaining args
+	// Parse flags first (before subcommand)
 	fs := flag.NewFlagSet("vars", flag.ContinueOnError)
-	_ = fs.Bool("session", false, "Session scope (default)") // default, kept for completeness
+	_ = fs.Bool("session", false, "Session scope (default)") // kept for completeness
 	envScope := fs.Bool("env", false, "Environment scope")
 	shellScope := fs.Bool("shell", false, "Shell scope")
-	fs.Parse(args[1:])
+	fs.Parse(args)
 
-	// Determine scope
-	scope := "session" // default
+	// Determine scope from flags
+	scope := ""
 	if *envScope {
 		scope = "env"
 	} else if *shellScope {
 		scope = "shell"
 	}
 
+	// Get remaining args after flags
+	var remaining []string
+	for i, arg := range args {
+		if !strings.HasPrefix(arg, "-") || arg == "-" {
+			remaining = args[i:]
+			break
+		}
+	}
+	if remaining == nil {
+		remaining = []string{}
+	}
+
+	// If no subcommand, just list (show all)
+	if len(remaining) == 0 {
+		return c.listVars(ctx, "")
+	}
+
+	subcmd := remaining[0]
+	key := ""
+	value := ""
+
 	switch subcmd {
 	case "list", "ls", "l":
 		return c.listVars(ctx, scope)
 
 	case "set", "s":
-		key := fs.Arg(0)
-		value := fs.Arg(1)
-		if key == "" || value == "" {
+		if len(remaining) < 3 {
 			return fmt.Errorf("usage: /vars set [--session|--env|--shell] <key> <value>")
+		}
+		key = remaining[1]
+		value = remaining[2]
+		// Use scope from flag, or default to session if not specified
+		if scope == "" {
+			scope = "session"
 		}
 		return c.setVar(ctx, scope, key, value)
 
 	case "unset", "delete", "u":
-		key := fs.Arg(0)
-		if key == "" {
+		if len(remaining) < 2 {
 			return fmt.Errorf("usage: /vars unset [--session|--env|--shell] <key>")
+		}
+		key = remaining[1]
+		if scope == "" {
+			scope = "session"
 		}
 		return c.unsetVar(ctx, scope, key)
 
 	case "get", "g":
-		key := fs.Arg(0)
-		if key == "" {
+		if len(remaining) < 2 {
 			return fmt.Errorf("usage: /vars get <key>")
 		}
+		key = remaining[1]
 		return c.getVar(ctx, key)
 
 	default:
@@ -69,7 +91,7 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 	}
 }
 
-func (c *varsCmd) listVars(ctx *repl.ShellContext, scope string) error {
+func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 	type varEntry struct {
 		key    string
 		value  string
@@ -80,25 +102,23 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, scope string) error {
 	var entries []varEntry
 
 	// Shell vars
-	for k, v := range ctx.Vars {
-		entries = append(entries, varEntry{
-			key:    k,
-			value:  fmt.Sprintf("%v", v),
-			scope:  "shell",
-			active: true,
-		})
+	if filterScope == "" || filterScope == "shell" {
+		for k, v := range ctx.Vars {
+			entries = append(entries, varEntry{
+				key:    k,
+				value:  fmt.Sprintf("%v", v),
+				scope:  "shell",
+				active: true,
+			})
+		}
 	}
 
 	// Environment vars
 	env := ctx.Tree.CurrentEnv()
-	envVars := make(map[string]string)
-	if env != nil {
+	envVars := make(map[string]bool)
+	if env != nil && (filterScope == "" || filterScope == "env") {
 		for k, v := range env.Vars {
-			key := k
-			value := fmt.Sprintf("%v", v)
-			envVars[key] = value
-
-			// Check if session overrides
+			envVars[k] = true
 			active := true
 			session := ctx.Tree.Current()
 			if session != nil {
@@ -108,8 +128,8 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, scope string) error {
 			}
 
 			entries = append(entries, varEntry{
-				key:    key,
-				value:  value,
+				key:    k,
+				value:  fmt.Sprintf("%v", v),
 				scope:  "env:" + env.Name,
 				active: active,
 			})
@@ -118,12 +138,11 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, scope string) error {
 
 	// Session vars
 	session := ctx.Tree.Current()
-	if session != nil {
+	if session != nil && (filterScope == "" || filterScope == "session") {
 		for k, v := range session.VarOverrides {
-			value := fmt.Sprintf("%v", v)
 			entries = append(entries, varEntry{
 				key:    k,
-				value:  value,
+				value:  fmt.Sprintf("%v", v),
 				scope:  "session",
 				active: true,
 			})
@@ -141,6 +160,10 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, scope string) error {
 			scopeDisplay += " (shadowed)"
 		}
 		fmt.Printf("%-15s %-30s %s\n", e.key, e.value, scopeDisplay)
+	}
+
+	if len(entries) == 0 {
+		fmt.Println("(none)")
 	}
 
 	return nil
