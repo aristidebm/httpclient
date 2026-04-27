@@ -14,6 +14,7 @@ type Session struct {
 	HeaderOverrides map[string]string
 	Vars            Variables
 	OpenAPISpec     *OpenAPISpec // stored as pointer for JSON serialization
+	Auth            *AuthConfig  // session-level auth (overrides env auth)
 	CreatedAt       time.Time
 }
 
@@ -63,4 +64,50 @@ func (s *Session) RemoveRequest(id string) bool {
 		}
 	}
 	return false
+}
+
+func (s *Session) Clone() *Session {
+	// Clone vars
+	vars := make(Variables)
+	for k, v := range s.Vars {
+		vars[k] = v
+	}
+
+	// Clone requests
+	requests := make([]*Request, len(s.Requests))
+	for i, r := range s.Requests {
+		requests[i] = r.Clone()
+	}
+
+	// Clone auth
+	var auth *AuthConfig
+	if s.Auth != nil {
+		auth = &AuthConfig{
+			Type:         s.Auth.Type,
+			Username:     s.Auth.Username,
+			Password:     s.Auth.Password,
+			Token:        s.Auth.Token,
+			TokenType:    s.Auth.TokenType,
+			HeaderName:   s.Auth.HeaderName,
+			ClientID:     s.Auth.ClientID,
+			ClientSecret: s.Auth.ClientSecret,
+			TokenURL:     s.Auth.TokenURL,
+			AccessToken:  s.Auth.AccessToken,
+			RefreshToken: s.Auth.RefreshToken,
+			ExpiresAt:    s.Auth.ExpiresAt,
+		}
+	}
+
+	return &Session{
+		ID:              s.ID,
+		Name:            s.Name,
+		EnvName:         s.EnvName,
+		ParentID:        s.ParentID,
+		Requests:        requests,
+		HeaderOverrides: s.HeaderOverrides,
+		Vars:            vars,
+		OpenAPISpec:     s.OpenAPISpec,
+		Auth:            auth,
+		CreatedAt:       s.CreatedAt,
+	}
 }

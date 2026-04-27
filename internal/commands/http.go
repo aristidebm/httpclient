@@ -233,7 +233,7 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 		client = ctx.Executor
 	}
 
-	err = client.Execute(req, env)
+	err = client.Execute(req, session, env)
 	if err != nil {
 		return err
 	}

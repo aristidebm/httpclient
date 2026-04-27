@@ -18,6 +18,14 @@ func TestClientExecuteSuccess(t *testing.T) {
 		Vars:    model.Variables{},
 	}
 
+	session := &model.Session{
+		ID:       "test",
+		Name:     "test",
+		EnvName:  "test",
+		Requests: []*model.Request{},
+		Vars:     model.Variables{},
+	}
+
 	req := &model.Request{
 		Method: "GET",
 		URL:    "/get",
@@ -27,7 +35,7 @@ func TestClientExecuteSuccess(t *testing.T) {
 		Vars: model.Variables{},
 	}
 
-	err := client.Execute(req, env)
+	err := client.Execute(req, session, env)
 	if err != nil {
 		t.Fatalf("Execute failed: %v", err)
 	}
@@ -56,13 +64,21 @@ func TestClientTimeout(t *testing.T) {
 		Vars:    model.Variables{},
 	}
 
+	session := &model.Session{
+		ID:       "test",
+		Name:     "test",
+		EnvName:  "test",
+		Requests: []*model.Request{},
+		Vars:     model.Variables{},
+	}
+
 	req := &model.Request{
 		Method: "GET",
 		URL:    "https://httpbin.org/delay/5",
 		Vars:   model.Variables{},
 	}
 
-	err := client.Execute(req, env)
+	err := client.Execute(req, session, env)
 	if err == nil {
 		t.Fatal("expected error for timeout")
 	}
@@ -88,6 +104,14 @@ func TestHeaderMerging(t *testing.T) {
 		Vars: model.Variables{},
 	}
 
+	session := &model.Session{
+		ID:       "test",
+		Name:     "test",
+		EnvName:  "test",
+		Requests: []*model.Request{},
+		Vars:     model.Variables{},
+	}
+
 	req := &model.Request{
 		Method: "GET",
 		URL:    "/headers",
@@ -97,7 +121,7 @@ func TestHeaderMerging(t *testing.T) {
 		Vars: model.Variables{},
 	}
 
-	err := client.Execute(req, env)
+	err := client.Execute(req, session, env)
 	if err != nil {
 		t.Fatalf("Execute failed: %v", err)
 	}
@@ -117,6 +141,14 @@ func TestURLResolution(t *testing.T) {
 		Vars:    model.Variables{},
 	}
 
+	session := &model.Session{
+		ID:       "test",
+		Name:     "test",
+		EnvName:  "test",
+		Requests: []*model.Request{},
+		Vars:     model.Variables{},
+	}
+
 	req := &model.Request{
 		Method: "GET",
 		URL:    "/anything/{path}",
@@ -125,7 +157,7 @@ func TestURLResolution(t *testing.T) {
 		},
 	}
 
-	err := client.Execute(req, env)
+	err := client.Execute(req, session, env)
 	if err != nil {
 		t.Fatalf("Execute failed: %v", err)
 	}
@@ -145,13 +177,21 @@ func TestNon2xxResponse(t *testing.T) {
 		Vars:    model.Variables{},
 	}
 
+	session := &model.Session{
+		ID:       "test",
+		Name:     "test",
+		EnvName:  "test",
+		Requests: []*model.Request{},
+		Vars:     model.Variables{},
+	}
+
 	req := &model.Request{
 		Method: "GET",
 		URL:    "/status/404",
 		Vars:   model.Variables{},
 	}
 
-	err := client.Execute(req, env)
+	err := client.Execute(req, session, env)
 	if err != nil {
 		t.Fatalf("expected no error for non-2xx, got %v", err)
 	}
@@ -171,8 +211,16 @@ func TestApplyAuth(t *testing.T) {
 		Vars: model.Variables{},
 	}
 
+	session := &model.Session{
+		ID:       "test",
+		Name:     "test",
+		EnvName:  "test",
+		Requests: []*model.Request{},
+		Vars:     model.Variables{},
+	}
+
 	req, _ := http.NewRequest("GET", "https://api.example.com/test", nil)
-	ApplyAuth(req, env)
+	ApplyAuth(req, session, env)
 
 	auth := req.Header.Get("Authorization")
 	if auth != "TOKEN my-token" {
@@ -190,8 +238,16 @@ func TestApplyAuthWithTokenPrefix(t *testing.T) {
 		Vars: model.Variables{},
 	}
 
+	session := &model.Session{
+		ID:       "test",
+		Name:     "test",
+		EnvName:  "test",
+		Requests: []*model.Request{},
+		Vars:     model.Variables{},
+	}
+
 	req, _ := http.NewRequest("GET", "https://api.example.com/test", nil)
-	ApplyAuth(req, env)
+	ApplyAuth(req, session, env)
 
 	auth := req.Header.Get("Authorization")
 	if auth != "TOKEN my-token" {

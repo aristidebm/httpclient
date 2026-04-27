@@ -237,7 +237,7 @@ func (c *replayCmd) Run(ctx *repl.ShellContext, args []string) error {
 				continue
 			}
 			cloned := req.Clone()
-			if err := ctx.Executor.Execute(cloned, env); err != nil {
+			if err := ctx.Executor.Execute(cloned, session, env); err != nil {
 				fmt.Fprintf(os.Stderr, "Error replaying %s: %v\n", req.ID, err)
 				continue
 			}
@@ -254,7 +254,7 @@ func (c *replayCmd) Run(ctx *repl.ShellContext, args []string) error {
 		}
 
 		cloned := req.Clone()
-		if err := ctx.Executor.Execute(cloned, env); err != nil {
+		if err := ctx.Executor.Execute(cloned, session, env); err != nil {
 			return err
 		}
 		session.AddRequest(cloned)
@@ -331,7 +331,7 @@ func (c *watchCmd) Run(ctx *repl.ShellContext, args []string) error {
 
 	for {
 		cloned := req.Clone()
-		if err := ctx.Executor.Execute(cloned, env); err != nil {
+		if err := ctx.Executor.Execute(cloned, session, env); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		} else {
 			session.AddRequest(cloned)

@@ -7,30 +7,36 @@ import (
 	"httpclient/internal/model"
 )
 
-func ApplyAuth(req *http.Request, env *model.Environment) {
-	if env.Auth == nil {
+func ApplyAuth(req *http.Request, session *model.Session, env *model.Environment) {
+	// Check session auth first, fall back to environment auth
+	auth := session.Auth
+	if auth == nil {
+		auth = env.Auth
+	}
+
+	if auth == nil {
 		return
 	}
 
-	switch env.Auth.Type {
+	switch auth.Type {
 	case "basic":
-		creds := base64.StdEncoding.EncodeToString([]byte(env.Auth.Username + ":" + env.Auth.Password))
+		creds := base64.StdEncoding.EncodeToString([]byte(auth.Username + ":" + auth.Password))
 		req.Header.Set("Authorization", "Basic "+creds)
 
 	case "token":
-		tokenType := env.Auth.TokenType
+		tokenType := auth.TokenType
 		if tokenType == "" {
 			tokenType = "Bearer"
 		}
-		headerName := env.Auth.HeaderName
+		headerName := auth.HeaderName
 		if headerName == "" {
 			headerName = "Authorization"
 		}
-		req.Header.Set(headerName, tokenType+" "+env.Auth.Token)
+		req.Header.Set(headerName, tokenType+" "+auth.Token)
 
 	case "oauth":
-		if env.Auth.AccessToken != "" {
-			req.Header.Set("Authorization", "Bearer "+env.Auth.AccessToken)
+		if auth.AccessToken != "" {
+			req.Header.Set("Authorization", "Bearer "+auth.AccessToken)
 		}
 	}
 }

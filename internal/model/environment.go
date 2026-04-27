@@ -31,7 +31,7 @@ type Environment struct {
 	BaseURL   string
 	Headers   map[string]string
 	Vars      Variables
-	Auth      *AuthConfig
+	Auth      *AuthConfig // environment-level auth (fallback if session has none)
 	CreatedAt time.Time
 }
 
@@ -62,11 +62,12 @@ func (e *Environment) Clone() *Environment {
 		}
 	}
 	return &Environment{
-		Name:    e.Name,
-		BaseURL: e.BaseURL,
-		Headers: headers,
-		Vars:    vars,
-		Auth:    auth,
+		Name:      e.Name,
+		BaseURL:   e.BaseURL,
+		Headers:   headers,
+		Vars:      vars,
+		Auth:      auth,
+		CreatedAt: e.CreatedAt,
 	}
 }
 

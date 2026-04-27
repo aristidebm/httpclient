@@ -44,7 +44,7 @@ func NewClient(timeout time.Duration) *Client {
 	}
 }
 
-func (c *Client) Execute(req *model.Request, env *model.Environment) error {
+func (c *Client) Execute(req *model.Request, session *model.Session, env *model.Environment) error {
 	mergedHeaders := make(map[string]string)
 	for k, v := range env.Headers {
 		mergedHeaders[k] = v
@@ -111,7 +111,7 @@ func (c *Client) Execute(req *model.Request, env *model.Environment) error {
 		httpReq.Header.Set("Content-Type", req.ContentType)
 	}
 
-	ApplyAuth(httpReq, env)
+	ApplyAuth(httpReq, session, env)
 
 	if len(req.Params) > 0 {
 		q := httpReq.URL.Query()
