@@ -64,7 +64,7 @@ All auth config is stored in the environment and persisted to disk.
 
 ## Phase 5: Login Command - OAuth
 
-- [ ] **Task 5.1**: Implement OAuth config storage
+- [x] **Task 5.1**: Implement OAuth config storage
   - Add subcommand: `/login oauth config <client-id> <token-url> [client-secret]`
   - Store in `Environment.Auth`
 
