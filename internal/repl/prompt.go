@@ -15,27 +15,9 @@ func BuildPrompt(ctx *ShellContext) string {
 		return color.GreenString("[httpclient] › ")
 	}
 
-	user := ""
-	if u, ok := env.Vars["user"]; ok {
-		user = toString(u)
-	}
-	if user == "" {
-		user = "user"
-	}
-
-	envPart := color.New(color.FgCyan).Sprintf("%s@%s", user, env.Name)
 	sessionPart := color.New(color.FgGreen).Sprint(session.Name)
+	envPart := color.New(color.FgCyan).Sprint(env.Name)
 	prompt := color.New(color.FgHiBlack).Sprint("› ")
 
-	// return "[httpclient : " + httpclient + " : " + envPart + " : " + sessionPart + "] " + prompt
-	return "[" + envPart + " : " + sessionPart + "] " + prompt
-}
-
-func toString(v any) string {
-	switch val := v.(type) {
-	case string:
-		return val
-	default:
-		return ""
-	}
+	return "[" + sessionPart + "@" + envPart + "] " + prompt
 }
