@@ -14,7 +14,7 @@ type varsCmd struct{}
 func (c *varsCmd) Name() string      { return "vars" }
 func (c *varsCmd) Aliases() []string { return nil }
 func (c *varsCmd) Help() string {
-	return "Manage variables: /vars [list|set|unset] [flags] [key] [value]"
+	return "Manage variables: /vars [list|set|unset|clear] [flags] [key] [value]"
 }
 
 func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
@@ -119,6 +119,17 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 		}
 		key = nonFlagArgs[0]
 		return c.getVar(ctx, key)
+
+	case "clear", "c":
+		// Check for --all flag
+		clearAll := false
+		for _, arg := range rem {
+			if arg == "--all" || arg == "-all" {
+				clearAll = true
+				break
+			}
+		}
+		return c.clearVars(ctx, scope, clearAll)
 
 	default:
 		return fmt.Errorf("unknown subcommand: %s (use list, set, unset, or get)", subcmd)
@@ -308,15 +319,62 @@ func (c *varsCmd) unsetVar(ctx *repl.ShellContext, scope, key string) error {
 	return nil
 }
 
+func (c *varsCmd) clearVars(ctx *repl.ShellContext, scope string, clearAll bool) error {
+	if scope == "" {
+		scope = "session"
+	}
+
+	if clearAll {
+		session := ctx.Tree.Current()
+		if session != nil {
+			session.Vars = make(model.Variables)
+		}
+		env := ctx.Tree.CurrentEnv()
+		if env != nil {
+			env.Vars = make(model.Variables)
+		}
+		ctx.Vars = make(model.Variables)
+		repl.PrintSuccess("Cleared all variables (session, env, shell)")
+		return nil
+	}
+
+	switch scope {
+	case "session":
+		session := ctx.Tree.Current()
+		if session == nil {
+			return fmt.Errorf("no current session")
+		}
+		session.Vars = make(model.Variables)
+		repl.PrintSuccess("Cleared all session variables")
+
+	case "env":
+		env := ctx.Tree.CurrentEnv()
+		if env == nil {
+			return fmt.Errorf("no current environment")
+		}
+		env.Vars = make(model.Variables)
+		repl.PrintSuccess(fmt.Sprintf("Cleared all variables in environment %q", env.Name))
+
+	case "shell":
+		ctx.Vars = make(model.Variables)
+		repl.PrintSuccess("Cleared all shell variables")
+
+	default:
+		return fmt.Errorf("unknown scope: %s (use: session, env, shell, or --all)", scope)
+	}
+
+	return nil
+}
+
 func (c *varsCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	fields := strings.Fields(partial)
 
 	if len(fields) == 0 {
-		return []string{"list", "set", "unset", "get"}
+		return []string{"list", "set", "unset", "get", "clear"}
 	}
 
 	if len(fields) == 1 {
-		return []string{"list", "set", "unset", "get"}
+		return []string{"list", "set", "unset", "get", "clear"}
 	}
 
 	// Complete flags
