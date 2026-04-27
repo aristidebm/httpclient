@@ -168,18 +168,13 @@ func envList(ctx *repl.ShellContext) error {
 	}
 
 	for name, env := range ctx.Tree.Environments {
-		envInfo := name
-		if env.BaseURL != "" {
-			envInfo = fmt.Sprintf("%s (%s)", name, env.BaseURL)
-		}
-
 		marker := " "
 		if name == currentEnv {
 			marker = "←"
 		}
 
-		fmt.Printf("%s%s  [%s] %d vars\n",
-			marker, envInfo, env.Name, len(env.Vars))
+		fmt.Printf("%s%s  %d vars %s\n",
+			marker, name, len(env.Vars), env.CreatedAt.Format("2006-01-02 15:04"))
 	}
 	return nil
 }

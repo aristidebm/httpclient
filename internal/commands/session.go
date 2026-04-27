@@ -201,12 +201,6 @@ func sessionSwitch(ctx *repl.ShellContext, args []string) error {
 
 func sessionList(ctx *repl.ShellContext) error {
 	printSession := func(sess *model.Session, indent int) {
-		env := ctx.Tree.Environments[sess.EnvName]
-		envName := sess.EnvName
-		if env != nil && env.BaseURL != "" {
-			envName = fmt.Sprintf("%s (%s)", sess.EnvName, env.BaseURL)
-		}
-
 		marker := " "
 		if sess.ID == ctx.Tree.CurrentID {
 			marker = "←"
@@ -217,8 +211,8 @@ func sessionList(ctx *repl.ShellContext) error {
 			prefix = prefix + "└─ "
 		}
 
-		fmt.Printf("%s%s%-15s [%s] %d requests %s %s\n",
-			prefix, marker, sess.Name, envName, len(sess.Requests), marker, sess.CreatedAt.Format("2006-01-02 15:04"))
+		fmt.Printf("%s%s%s %d requests %s\n",
+			prefix, marker, sess.Name, len(sess.Requests), sess.CreatedAt.Format("2006-01-02 15:04"))
 	}
 
 	// Find root sessions (no parent)
