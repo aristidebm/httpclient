@@ -25,29 +25,29 @@ All auth config is stored in the environment and persisted to disk.
 
 ## Phase 2: Auth Execution Logic
 
-- [ ] **Task 2.1**: Rewrite `internal/executor/auth.go` to handle all auth types
+- [x] **Task 2.1**: Rewrite `internal/executor/auth.go` to handle all auth types
   - Basic: Generate `Authorization: Basic base64(user:pass)`
   - Token: Set header (default: `Authorization: Bearer <token>`, custom header support)
   - OAuth: Use access token (assume already obtained)
 
-- [ ] **Task 2.2**: Update `ApplyAuth()` function signature if needed to handle new auth types
+- [x] **Task 2.2**: Update `ApplyAuth()` function signature if needed to handle new auth types
 
 ---
 
 ## Phase 3: Login Command - Basic Auth
 
-- [ ] **Task 3.1**: Create `internal/commands/login.go` with command structure
+- [x] **Task 3.1**: Create `internal/commands/login.go` with command structure
   - Register with `repl.Register(&loginCmd{})` in `init()`
 
-- [ ] **Task 3.2**: Implement `/login basic <username> [password]`
+- [x] **Task 3.2**: Implement `/login basic <username> [password]`
   - If password not provided, prompt for it (using readline)
   - Store credentials in `Environment.Auth`
   - Show confirmation message
 
-- [ ] **Task 3.3**: Implement `/login clear`
+- [x] **Task 3.3**: Implement `/login clear`
   - Remove auth config from current environment
 
-- [ ] **Task 3.4**: Implement `/login show`
+- [x] **Task 3.4**: Implement `/login show`
   - Display current auth type and config (redact passwords/tokens)
 
 ---
@@ -99,8 +99,8 @@ All auth config is stored in the environment and persisted to disk.
 
 ## Progress Tracking
 
-Current Phase: **Phase 2 - Auth Execution Logic**
+Current Phase: **Phase 4 - Login Command (Token Auth)**
 
-Last completed: Phase 1 (Tasks 1.1, 1.2, 1.3)
+Last completed: Phase 1, 2, 3 (All basic auth tasks done)
 
-Next task: **Task 2.1** - Rewrite internal/executor/auth.go
+Next task: **Task 4.1** - Implement /login token
