@@ -159,14 +159,25 @@ func envUnset(ctx *repl.ShellContext, args []string) error {
 }
 
 func envList(ctx *repl.ShellContext) error {
-	fmt.Println("NAME             VARS")
-	fmt.Println("───────────────────────────────────────────────────────────────")
+	currentEnv := ""
+	current := ctx.Tree.CurrentEnv()
+	if current != nil {
+		currentEnv = current.Name
+	}
+
 	for name, env := range ctx.Tree.Environments {
-		count := 0
-		if env.Vars != nil {
-			count = len(env.Vars)
+		envInfo := name
+		if env.BaseURL != "" {
+			envInfo = fmt.Sprintf("%s (%s)", name, env.BaseURL)
 		}
-		fmt.Printf("%-16s %d\n", name, count)
+
+		marker := " "
+		if name == currentEnv {
+			marker = "←"
+		}
+
+		fmt.Printf("%s%s  [%s] %d vars\n",
+			marker, envInfo, env.Name, len(env.Vars))
 	}
 	return nil
 }
