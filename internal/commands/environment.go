@@ -12,7 +12,7 @@ type envCmd struct{}
 
 func (c *envCmd) Name() string      { return "env" }
 func (c *envCmd) Aliases() []string { return nil }
-func (c *envCmd) Help() string      { return "Manage environments: new, list, show, copy" }
+func (c *envCmd) Help() string      { return "Manage environments: new, list, show, copy, drop, rename" }
 
 func (c *envCmd) Run(ctx *repl.ShellContext, args []string) error {
 	if len(args) == 0 {
@@ -33,6 +33,10 @@ func (c *envCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return envShow(ctx, args[1:])
 	case "copy":
 		return envCopy(ctx, args[1:])
+	case "drop":
+		return envDrop(ctx, args[1:])
+	case "rename":
+		return envRename(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown env subcommand: %s", subcmd)
 	}
@@ -42,7 +46,7 @@ func (c *envCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	fields := strings.Fields(partial)
 
 	if len(fields) == 1 {
-		return []string{"new", "set", "unset", "list", "show", "copy"}
+		return []string{"new", "set", "unset", "list", "show", "copy", "drop", "rename"}
 	}
 
 	subcmd := fields[0]
@@ -52,7 +56,7 @@ func (c *envCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	}
 
 	switch subcmd {
-	case "set", "unset", "show", "copy":
+	case "set", "unset", "show", "copy", "drop", "rename":
 		// Complete environment names
 		var names []string
 		for name := range ctx.Tree.Environments {
@@ -186,22 +190,12 @@ func envShow(ctx *repl.ShellContext, args []string) error {
 
 	fmt.Printf("Name: %s\n", env.Name)
 	fmt.Printf("BaseURL: %s\n", env.BaseURL)
-	fmt.Println("\nHeaders:")
-	if len(env.Headers) == 0 {
-		fmt.Println("  (none)")
-	} else {
-		for k, v := range env.Headers {
-			fmt.Printf("  %s: %s\n", k, v)
-		}
+	fmt.Printf("Variables: %d\n", len(env.Vars))
+	fmt.Printf("Headers: %d\n", len(env.Headers))
+	if env.Auth != nil {
+		fmt.Printf("Auth: %s\n", env.Auth.Type)
 	}
-	fmt.Println("\nVariables:")
-	if env.Vars == nil || len(env.Vars) == 0 {
-		fmt.Println("  (none)")
-	} else {
-		for _, v := range env.Vars.ListPublic() {
-			fmt.Printf("%-15s %-30s %s\n", v.Name, fmt.Sprintf("%v", v.Value), "env:"+env.Name)
-		}
-	}
+
 	return nil
 }
 
@@ -224,6 +218,68 @@ func envCopy(ctx *repl.ShellContext, args []string) error {
 
 	ctx.Tree.Environments[dstName] = src.Clone()
 	repl.PrintSuccess(fmt.Sprintf("Copied environment %q to %q", srcName, dstName))
+	return nil
+}
+
+func envDrop(ctx *repl.ShellContext, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: /env drop <name>")
+	}
+
+	name := args[0]
+
+	// Check if any session is using this env
+	for _, s := range ctx.Tree.Sessions {
+		if s.EnvName == name {
+			return fmt.Errorf("cannot drop environment %q: it is used by session %q", name, s.Name)
+		}
+	}
+
+	if _, ok := ctx.Tree.Environments[name]; !ok {
+		return fmt.Errorf("environment %q not found", name)
+	}
+
+	// Don't drop if it's the current environment
+	env := ctx.Tree.CurrentEnv()
+	if env != nil && env.Name == name {
+		return fmt.Errorf("cannot drop current environment; switch to another first")
+	}
+
+	delete(ctx.Tree.Environments, name)
+	repl.PrintSuccess(fmt.Sprintf("Dropped environment %q", name))
+	return nil
+}
+
+func envRename(ctx *repl.ShellContext, args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("usage: /env rename <old-name> <new-name>")
+	}
+
+	oldName := args[0]
+	newName := args[1]
+
+	if _, ok := ctx.Tree.Environments[newName]; ok {
+		return fmt.Errorf("environment %q already exists", newName)
+	}
+
+	env, ok := ctx.Tree.Environments[oldName]
+	if !ok {
+		return fmt.Errorf("environment %q not found", oldName)
+	}
+
+	// Update env name
+	env.Name = newName
+	ctx.Tree.Environments[newName] = env
+	delete(ctx.Tree.Environments, oldName)
+
+	// Update session references
+	for _, s := range ctx.Tree.Sessions {
+		if s.EnvName == oldName {
+			s.EnvName = newName
+		}
+	}
+
+	repl.PrintSuccess(fmt.Sprintf("Renamed environment %q to %q", oldName, newName))
 	return nil
 }
 

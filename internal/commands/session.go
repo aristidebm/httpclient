@@ -14,7 +14,7 @@ type sessionCmd struct{}
 func (c *sessionCmd) Name() string      { return "session" }
 func (c *sessionCmd) Aliases() []string { return nil }
 func (c *sessionCmd) Help() string {
-	return "Manage sessions: new, branch, switch, list, show, rename, drop, move, log"
+	return "Manage sessions: new, branch, switch, list, show, rename, drop, move"
 }
 
 func (c *sessionCmd) Run(ctx *repl.ShellContext, args []string) error {
@@ -40,7 +40,7 @@ func (c *sessionCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return sessionMove(ctx, args[1:])
 	case "show":
 		return sessionShow(ctx, args[1:])
-	case "requests", "log":
+	case "requests":
 		return sessionRequests(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown session subcommand: %s", subcmd)
@@ -51,7 +51,7 @@ func (c *sessionCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	fields := strings.Fields(partial)
 
 	if len(fields) == 1 {
-		return []string{"new", "branch", "switch", "list", "show", "rename", "drop", "move"}
+		return []string{"new", "branch", "switch", "list", "show", "rename", "drop", "move", "requests"}
 	}
 
 	subcmd := fields[0]
