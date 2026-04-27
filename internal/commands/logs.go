@@ -55,7 +55,7 @@ func logsList(ctx *repl.ShellContext) error {
 		if !req.ExecutedAt.IsZero() {
 			created = req.ExecutedAt.Format("2006-01-02T15:04:05Z07:00")
 		}
-		fmt.Printf("%-4s %-6s %-8s %-28s %s\n", req.ID, method, status, created, req.URL)
+		fmt.Printf("%s %s %s %s %s\n", req.ID, method, status, created, req.URL)
 	}
 
 	return nil
