@@ -12,7 +12,7 @@ type envCmd struct{}
 
 func (c *envCmd) Name() string      { return "env" }
 func (c *envCmd) Aliases() []string { return nil }
-func (c *envCmd) Help() string      { return "Manage environments: new, set, unset, list, show, copy" }
+func (c *envCmd) Help() string      { return "Manage environments: new, set, unset, list, show, copy, url" }
 
 func (c *envCmd) Run(ctx *repl.ShellContext, args []string) error {
 	if len(args) == 0 {

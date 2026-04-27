@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"time"
 
 	"httpclient/internal/repl"
 )
@@ -55,7 +56,11 @@ func logsList(ctx *repl.ShellContext) error {
 		if !req.ExecutedAt.IsZero() {
 			created = req.ExecutedAt.Format("2006-01-02T15:04:05Z07:00")
 		}
-		fmt.Printf("%s %s %s %s %s\n", req.ID, method, status, created, req.URL)
+		duration := ""
+		if req.Duration > 0 {
+			duration = req.Duration.Round(time.Millisecond).String()
+		}
+		fmt.Printf("%s %s %s %s %s %s\n", req.ID, method, status, created, duration, req.URL)
 	}
 
 	return nil

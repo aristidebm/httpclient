@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"httpclient/internal/model"
 	"httpclient/internal/repl"
@@ -126,11 +127,12 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 
 func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 	type varEntry struct {
-		key    string
-		value  string
-		scope  string
-		active bool
-		public bool
+		key     string
+		value   string
+		scope   string
+		active  bool
+		public  bool
+		updated time.Time
 	}
 
 	var entries []varEntry
@@ -139,11 +141,12 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 	if filterScope == "" || filterScope == "shell" {
 		for _, v := range ctx.Vars.ListPublic() {
 			entries = append(entries, varEntry{
-				key:    v.Name,
-				value:  fmt.Sprintf("%v", v.Value),
-				scope:  "shell",
-				active: true,
-				public: v.Public,
+				key:     v.Name,
+				value:   fmt.Sprintf("%v", v.Value),
+				scope:   "shell",
+				active:  true,
+				public:  v.Public,
+				updated: v.Updated,
 			})
 		}
 	}
@@ -163,11 +166,12 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 			}
 
 			entries = append(entries, varEntry{
-				key:    v.Name,
-				value:  fmt.Sprintf("%v", v.Value),
-				scope:  "env:" + env.Name,
-				active: active,
-				public: v.Public,
+				key:     v.Name,
+				value:   fmt.Sprintf("%v", v.Value),
+				scope:   "env:" + env.Name,
+				active:  active,
+				public:  v.Public,
+				updated: v.Updated,
 			})
 		}
 	}
@@ -177,11 +181,12 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 	if session != nil && (filterScope == "" || filterScope == "session") {
 		for _, v := range session.Vars.ListPublic() {
 			entries = append(entries, varEntry{
-				key:    v.Name,
-				value:  fmt.Sprintf("%v", v.Value),
-				scope:  "session",
-				active: true,
-				public: v.Public,
+				key:     v.Name,
+				value:   fmt.Sprintf("%v", v.Value),
+				scope:   "session",
+				active:  true,
+				public:  v.Public,
+				updated: v.Updated,
 			})
 		}
 	}
@@ -192,7 +197,7 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 		if !e.active {
 			scopeDisplay += " (shadowed)"
 		}
-		fmt.Printf("%-15s %-30s %s\n", e.key, e.value, scopeDisplay)
+		fmt.Printf("%-15s %-30s %-12s %s\n", e.key, e.value, e.updated.Format("2006-01-02"), scopeDisplay)
 	}
 
 	if len(entries) == 0 {

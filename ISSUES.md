@@ -68,13 +68,49 @@
 
 ---
 
+## Issue 6: `/env` help text not up to date
+**Problem**: `/help` shows `/env` with outdated subcommands: "new, set, unset, list, show, copy"
+
+**Cause**: The `Help()` function in `internal/commands/environment.go:15` has a hardcoded string that doesn't include all subcommands (like `set` for headers/vars, etc.)
+
+**Fix**: Update the help string to accurately reflect available subcommands.
+
+**Status**: [x] Fixed in commit 1069c17
+
+---
+
+## Issue 7: Add timestamp to `/vars` listing
+**Problem**: When listing variables with `/vars`, there's no way to see when a variable was set/updated.
+
+**Cause**: The `Variable` struct in `internal/model/vars.go` already has `Created` and `Updated` fields, but `/vars` listing doesn't display them.
+
+**Fix**: Update `/vars` listing to show timestamp (use `Updated` field, or `Created` if not updated).
+
+**Status**: [x] Fixed in commit 1069c17
+
+---
+
+## Issue 8: Add duration to `/logs` listing
+**Problem**: The `/logs` command shows requests but doesn't display the duration (how long the request took).
+
+**Cause**: `Request` struct has a `Duration` field (`internal/model/request.go:39`), but the `logsList()` function doesn't display it.
+
+**Fix**: Add duration column to `/logs` output (format as ms or human-readable).
+
+**Status**: [x] Fixed in commit 1069c17
+
+---
+
 ## Progress
 
 - [x] Issue 1: `/login` in help (commit 8e3c417)
 - [x] Issue 2: Remove `/vars` header (commit 8e3c417)
-- [ ] Issue 3: BaseURL documentation/education (use `/env set <env> url <url>`)
+- [x] Issue 3: BaseURL documentation/education (use `/env set <env> url <url>`)
 - [x] Issue 4: Curl export with auth (commit 8e3c417)
 - [x] Issue 5: `/login basic` parsing (commit 8e3c417)
+- [x] Issue 6: `/env` help text update (commit 1069c17)
+- [x] Issue 7: Timestamp in `/vars` listing (commit 1069c17)
+- [x] Issue 8: Duration in `/logs` listing (commit 1069c17)
 
 ---
 
