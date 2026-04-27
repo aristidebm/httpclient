@@ -186,10 +186,6 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 		}
 	}
 
-	// Print header
-	fmt.Println("KEY             VALUE                          SCOPE")
-	fmt.Println("───────────────────────────────────────────────────────────────")
-
 	// Print all entries
 	for _, e := range entries {
 		scopeDisplay := e.scope

@@ -48,13 +48,20 @@ func (c *loginCmd) Run(ctx *repl.ShellContext, args []string) error {
 
 func loginBasic(ctx *repl.ShellContext, args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("usage: /login basic <username> [password]")
+		return fmt.Errorf("usage: /login basic <username> [password] OR /login basic <username:password>")
 	}
 
 	username := args[0]
 	password := ""
 	if len(args) >= 2 {
 		password = args[1]
+	}
+
+	// Support username:password format
+	if strings.Contains(username, ":") && password == "" {
+		parts := strings.SplitN(username, ":", 2)
+		username = parts[0]
+		password = parts[1]
 	}
 
 	env := ctx.Tree.CurrentEnv()

@@ -45,6 +45,40 @@ func (e *CurlExporter) Export(session *model.Session, env *model.Environment) ([
 		output.WriteString(url)
 		output.WriteString("'")
 
+		// Auth from environment
+		if env != nil && env.Auth != nil {
+			switch env.Auth.Type {
+			case "basic":
+				output.WriteString(" \\\n  -u '")
+				output.WriteString(env.Auth.Username)
+				output.WriteString(":")
+				output.WriteString(env.Auth.Password)
+				output.WriteString("'")
+			case "token":
+				tokenType := env.Auth.TokenType
+				if tokenType == "" {
+					tokenType = "Bearer"
+				}
+				headerName := env.Auth.HeaderName
+				if headerName == "" {
+					headerName = "Authorization"
+				}
+				output.WriteString(" \\\n  -H '")
+				output.WriteString(headerName)
+				output.WriteString(": ")
+				output.WriteString(tokenType)
+				output.WriteString(" ")
+				output.WriteString(env.Auth.Token)
+				output.WriteString("'")
+			case "oauth":
+				if env.Auth.AccessToken != "" {
+					output.WriteString(" \\\n  -H 'Authorization: Bearer ")
+					output.WriteString(env.Auth.AccessToken)
+					output.WriteString("'")
+				}
+			}
+		}
+
 		// Headers
 		if env != nil {
 			for k, v := range env.Headers {
