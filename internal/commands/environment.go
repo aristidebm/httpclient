@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"httpclient/internal/model"
 	"httpclient/internal/repl"
@@ -83,10 +84,11 @@ func envNew(ctx *repl.ShellContext, args []string) error {
 	}
 
 	env := &model.Environment{
-		Name:    name,
-		BaseURL: baseURL,
-		Headers: make(map[string]string),
-		Vars:    make(model.Variables),
+		Name:      name,
+		BaseURL:   baseURL,
+		Headers:   make(map[string]string),
+		Vars:      make(model.Variables),
+		CreatedAt: time.Now(),
 	}
 	env.SetBaseURL(baseURL)
 

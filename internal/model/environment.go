@@ -27,11 +27,12 @@ type AuthConfig struct {
 }
 
 type Environment struct {
-	Name    string
-	BaseURL string
-	Headers map[string]string
-	Vars    Variables
-	Auth    *AuthConfig
+	Name      string
+	BaseURL   string
+	Headers   map[string]string
+	Vars      Variables
+	Auth      *AuthConfig
+	CreatedAt time.Time
 }
 
 func (e *Environment) Clone() *Environment {
