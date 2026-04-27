@@ -45,8 +45,6 @@ func logsList(ctx *repl.ShellContext) error {
 		return nil
 	}
 
-	fmt.Printf("%-4s %-6s %-8s %-28s %s\n", "ID", "METHOD", "STATUS", "CREATED AT", "PATH")
-	fmt.Println("──────────────────────────────────────────────────────────────────────────────")
 	for _, req := range session.Requests {
 		method := req.Method
 		status := ""
