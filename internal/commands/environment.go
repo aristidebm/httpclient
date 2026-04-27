@@ -168,11 +168,17 @@ func envList(ctx *repl.ShellContext) error {
 }
 
 func envShow(ctx *repl.ShellContext, args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("usage: /env show <name>")
+	name := ""
+	if len(args) >= 1 {
+		name = args[0]
+	} else {
+		env := ctx.Tree.CurrentEnv()
+		if env == nil {
+			return fmt.Errorf("no current environment")
+		}
+		name = env.Name
 	}
 
-	name := args[0]
 	env, ok := ctx.Tree.Environments[name]
 	if !ok {
 		return fmt.Errorf("environment %q not found", name)
@@ -192,8 +198,6 @@ func envShow(ctx *repl.ShellContext, args []string) error {
 	if env.Vars == nil || len(env.Vars) == 0 {
 		fmt.Println("  (none)")
 	} else {
-		fmt.Println("KEY             VALUE                          SCOPE")
-		fmt.Println("───────────────────────────────────────────────────────────────")
 		for _, v := range env.Vars.ListPublic() {
 			fmt.Printf("%-15s %-30s %s\n", v.Name, fmt.Sprintf("%v", v.Value), "env:"+env.Name)
 		}

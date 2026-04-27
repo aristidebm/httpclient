@@ -14,7 +14,7 @@ type sessionCmd struct{}
 func (c *sessionCmd) Name() string      { return "session" }
 func (c *sessionCmd) Aliases() []string { return nil }
 func (c *sessionCmd) Help() string {
-	return "Manage sessions: new, branch, switch, list, rename, drop, move, log"
+	return "Manage sessions: new, branch, switch, list, show, rename, drop, move, log"
 }
 
 func (c *sessionCmd) Run(ctx *repl.ShellContext, args []string) error {
@@ -38,6 +38,8 @@ func (c *sessionCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return sessionDrop(ctx, args[1:])
 	case "move":
 		return sessionMove(ctx, args[1:])
+	case "show":
+		return sessionShow(ctx, args[1:])
 	case "requests", "log":
 		return sessionRequests(ctx, args[1:])
 	default:
@@ -49,7 +51,7 @@ func (c *sessionCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	fields := strings.Fields(partial)
 
 	if len(fields) == 1 {
-		return []string{"new", "branch", "switch", "list", "rename", "drop", "move"}
+		return []string{"new", "branch", "switch", "list", "show", "rename", "drop", "move"}
 	}
 
 	subcmd := fields[0]
@@ -368,14 +370,47 @@ func sessionRequests(ctx *repl.ShellContext, args []string) error {
 		return nil
 	}
 
-	fmt.Println("ID            METHOD   URL")
-	fmt.Println("───────────────────────────────────────────────────────────────")
 	for _, req := range session.Requests {
 		method := req.Method
 		if req.Response != nil {
 			method = fmt.Sprintf("%s %d", method, req.Response.StatusCode)
 		}
 		fmt.Printf("%-13s %-8s %s\n", req.ID, method, req.URL)
+	}
+
+	return nil
+}
+
+func sessionShow(ctx *repl.ShellContext, args []string) error {
+	name := ""
+	if len(args) >= 1 {
+		name = args[0]
+	} else {
+		session := ctx.Tree.Current()
+		if session == nil {
+			return fmt.Errorf("no current session")
+		}
+		name = session.Name
+	}
+
+	var target *model.Session
+	for _, s := range ctx.Tree.Sessions {
+		if s.Name == name {
+			target = s
+			break
+		}
+	}
+
+	if target == nil {
+		return fmt.Errorf("session %q not found", name)
+	}
+
+	fmt.Printf("Name: %s\n", target.Name)
+	fmt.Printf("Env:  %s\n", target.EnvName)
+	fmt.Printf("Requests: %d\n", len(target.Requests))
+	fmt.Printf("Created: %s\n", target.CreatedAt.Format("2006-01-02 15:04:05"))
+	if target.OpenAPISpec != nil {
+		fmt.Printf("OpenAPI: %s (v%s)\n", target.OpenAPISpec.Title, target.OpenAPISpec.Version)
 	}
 
 	return nil
