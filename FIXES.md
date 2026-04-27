@@ -25,13 +25,18 @@
 ## Issue 3: BaseURL not working when set via `/vars set`
 **Problem**: User set `baseURL` via `/vars set baseURL http://localhost:8000`, but requests still fail with "unsupported protocol scheme".
 
-**Cause**: The executor (`internal/executor/client.go`) checks `env.BaseURL`, but `/vars set` stores to session `Vars`, not to the environment's `BaseURL` field. The user should use `/env set <env-name> url <base-url>`.
+**Cause**: The executor (`internal/executor/client.go`) checks `env.BaseURL`, but `/vars set` stores to session `Vars`, not to the environment's `BaseURL` field.
 
-**Fix**: 
-- Educate user to use `/env set <env-name> url <base-url>` for setting base URL
-- OR make the executor also check for a `baseURL` variable as fallback
+**Resolution**: 
+- Environment configuration (baseURL, headers) → Use `/env` commands
+  - Set base URL: `/env set <env-name> url <base-url>`
+  - Set headers: `/env set <env-name> <Header-Name> <value>`
+- Variables (with scope) → Use `/vars` commands
+  - Session scope (default): `/vars set name value`
+  - Environment scope: `/vars set --env name value`
+  - Shell scope: `/vars set --shell name value`
 
-**Status**: [ ] Not started
+**Status**: [x] Resolved by design - documented correct usage
 
 ---
 
