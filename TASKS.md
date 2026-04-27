@@ -54,7 +54,7 @@ All auth config is stored in the environment and persisted to disk.
 
 ## Phase 4: Login Command - Token Auth
 
-- [ ] **Task 4.1**: Implement `/login token <token> [--header=X]`
+- [x] **Task 4.1**: Implement `/login token <token> [--header=X]`
   - Default header: `Authorization` with `Bearer` prefix
   - Custom header support via `--header=` flag
   - TokenType option (Bearer, Token, custom)
@@ -99,8 +99,8 @@ All auth config is stored in the environment and persisted to disk.
 
 ## Progress Tracking
 
-Current Phase: **Phase 4 - Login Command (Token Auth)**
+Current Phase: **Phase 5 - Login Command (OAuth)**
 
-Last completed: Phase 1, 2, 3 (All basic auth tasks done)
+Last completed: Phase 1, 2, 3, 4 (Basic + Token auth done)
 
-Next task: **Task 4.1** - Implement /login token
+Next task: **Task 5.1** - Implement OAuth config storage
