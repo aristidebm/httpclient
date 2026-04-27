@@ -7,7 +7,7 @@
 
 **Fix**: Update `helpCmd.Run()` to iterate over the `commands` map and display all registered commands dynamically.
 
-**Status**: [ ] Not started
+**Status**: [x] Fixed in commit 8e3c417
 
 ---
 
@@ -18,7 +18,7 @@
 
 **Fix**: Remove the header and separator line from the `/vars` listing output.
 
-**Status**: [ ] Not started
+**Status**: [x] Fixed in commit 8e3c417
 
 ---
 
@@ -44,7 +44,7 @@
 1. Check if environment has auth configured
 2. Add appropriate auth headers to the curl output (e.g., `-u user:pass` for basic, `-H "Authorization: Bearer ..."` for token)
 
-**Status**: [ ] Not started
+**Status**: [x] Fixed in commit 8e3c417
 
 ---
 
@@ -59,17 +59,17 @@
 - `/login basic username password` (current)
 - `/login basic username:password` (new - split on `:`)
 
-**Status**: [ ] Not started
+**Status**: [x] Fixed in commit 8e3c417
 
 ---
 
 ## Progress
 
-- [ ] Issue 1: `/login` in help
-- [ ] Issue 2: Remove `/vars` header
-- [ ] Issue 3: BaseURL documentation/education
-- [ ] Issue 4: Curl export with auth
-- [ ] Issue 5: `/login basic` parsing
+- [x] Issue 1: `/login` in help (commit 8e3c417)
+- [x] Issue 2: Remove `/vars` header (commit 8e3c417)
+- [ ] Issue 3: BaseURL documentation/education (use `/env set <env> url <url>`)
+- [x] Issue 4: Curl export with auth (commit 8e3c417)
+- [x] Issue 5: `/login basic` parsing (commit 8e3c417)
 
 ---
 
