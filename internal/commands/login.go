@@ -83,7 +83,7 @@ func loginBasic(ctx *repl.ShellContext, args []string) error {
 
 func loginToken(ctx *repl.ShellContext, args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("usage: /login token <token> [--header=X]")
+		return fmt.Errorf("usage: /login token <token> [--header=X] [--type=Y]")
 	}
 
 	token := args[0]
