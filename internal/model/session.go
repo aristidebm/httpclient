@@ -5,17 +5,38 @@ import (
 	"time"
 )
 
+type AuthConfig struct {
+	Type string // "basic", "token", "oauth"
+
+	// Basic auth
+	Username string
+	Password string
+
+	// Token auth
+	Token      string
+	TokenType  string // "Bearer", "Token", or custom
+	HeaderName string // default: "Authorization"
+
+	// OAuth
+	ClientID     string
+	ClientSecret string
+	TokenURL     string
+	AccessToken  string
+	RefreshToken string
+	ExpiresAt    time.Time
+}
+
 type Session struct {
-	ID              string
-	Name            string
-	EnvName         string
-	ParentID        string
-	Requests        []*Request
-	HeaderOverrides map[string]string
-	Vars            Variables
-	OpenAPISpec     *OpenAPISpec // stored as pointer for JSON serialization
-	Auth            *AuthConfig  // session-level auth (overrides env auth)
-	CreatedAt       time.Time
+	ID          string
+	Name        string
+	ParentID    string
+	BaseURL     string // session-specific base URL
+	Requests    []*Request
+	Headers     map[string]string // per-session headers
+	Vars        Variables
+	OpenAPISpec *OpenAPISpec // stored as pointer for JSON serialization
+	Auth        *AuthConfig  // session-level auth
+	CreatedAt   time.Time
 }
 
 type OpenAPISpec struct {
@@ -67,6 +88,12 @@ func (s *Session) RemoveRequest(id string) bool {
 }
 
 func (s *Session) Clone() *Session {
+	// Clone headers
+	headers := make(map[string]string)
+	for k, v := range s.Headers {
+		headers[k] = v
+	}
+
 	// Clone vars
 	vars := make(Variables)
 	for k, v := range s.Vars {
@@ -99,15 +126,15 @@ func (s *Session) Clone() *Session {
 	}
 
 	return &Session{
-		ID:              s.ID,
-		Name:            s.Name,
-		EnvName:         s.EnvName,
-		ParentID:        s.ParentID,
-		Requests:        requests,
-		HeaderOverrides: s.HeaderOverrides,
-		Vars:            vars,
-		OpenAPISpec:     s.OpenAPISpec,
-		Auth:            auth,
-		CreatedAt:       s.CreatedAt,
+		ID:          s.ID,
+		Name:        s.Name,
+		ParentID:    s.ParentID,
+		BaseURL:     s.BaseURL,
+		Requests:    requests,
+		Headers:     headers,
+		Vars:        vars,
+		OpenAPISpec: s.OpenAPISpec,
+		Auth:        auth,
+		CreatedAt:   s.CreatedAt,
 	}
 }

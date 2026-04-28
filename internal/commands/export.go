@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"httpclient/internal/export"
-	"httpclient/internal/model"
 	"httpclient/internal/repl"
 
 	_ "httpclient/internal/export"
@@ -59,26 +58,20 @@ func (c *exportCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return fmt.Errorf("no session to export")
 	}
 
-	// Get environment
-	var env *model.Environment
-	if session.EnvName != "" {
-		env = ctx.Tree.Environments[session.EnvName]
-	}
-
 	// Export
 	exporter, err := export.Get(format)
 	if err != nil {
 		return err
 	}
 
-	data, err := exporter.Export(session, env)
+	data, err := exporter.Export(session, ctx.Tree)
 	if err != nil {
 		return fmt.Errorf("export failed: %w", err)
 	}
 
 	// Handle bruno directory export
 	if format == "bruno" && outPath != "" {
-		err = export.ExportBrunoDir(session, env, outPath)
+		err = export.ExportBrunoDir(session, ctx.Tree, outPath)
 		if err != nil {
 			return fmt.Errorf("failed to export bruno: %w", err)
 		}

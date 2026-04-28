@@ -108,11 +108,6 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return err
 	}
 
-	env := ctx.Tree.CurrentEnv()
-	if env == nil {
-		return fmt.Errorf("no environment selected")
-	}
-
 	if showDoc && ctx.OpenAPI != nil {
 		return showOpenAPIDoc(ctx, h.method, endpoint)
 	}
@@ -122,16 +117,11 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 	for k, v := range ctx.Vars {
 		shellVars[k] = v.Value
 	}
-	// Also include session vars
+	// Also include effective vars (session + inherited)
 	session := ctx.Tree.Current()
-	if session != nil && session.Vars != nil {
-		for k, v := range session.Vars {
-			shellVars[k] = v.Value
-		}
-	}
-	// Also include env vars
-	if env != nil && env.Vars != nil {
-		for k, v := range env.Vars {
+	if session != nil {
+		effectiveVars := ctx.Tree.GetEffectiveVars(session.ID)
+		for k, v := range effectiveVars {
 			shellVars[k] = v.Value
 		}
 	}
@@ -233,7 +223,7 @@ func (h *httpCmd) Run(ctx *repl.ShellContext, args []string) error {
 		client = ctx.Executor
 	}
 
-	err = client.Execute(req, session, env)
+	err = client.Execute(req, session, ctx.Tree)
 	if err != nil {
 		return err
 	}

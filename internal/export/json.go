@@ -10,7 +10,7 @@ type JSONExporter struct{}
 
 func (e *JSONExporter) Format() string { return "json" }
 
-func (e *JSONExporter) Export(session *model.Session, env *model.Environment) ([]byte, error) {
+func (e *JSONExporter) Export(session *model.Session, tree *model.SessionTree) ([]byte, error) {
 	type Resp struct {
 		StatusCode int               `json:"statusCode"`
 		Status     string            `json:"status"`
@@ -30,19 +30,19 @@ func (e *JSONExporter) Export(session *model.Session, env *model.Environment) ([
 		Response    *Resp             `json:"response,omitempty"`
 	}
 
-	type Env struct {
-		Name    string            `json:"name"`
-		BaseURL string            `json:"baseUrl"`
-		Headers map[string]string `json:"headers,omitempty"`
-		Vars    map[string]any    `json:"vars,omitempty"`
+	type Sess struct {
+		Name      string `json:"name"`
+		BaseURL   string `json:"baseUrl,omitempty"`
+		ParentID  string `json:"parentId,omitempty"`
+		CreatedAt string `json:"createdAt"`
+		Requests  []Req  `json:"requests"`
 	}
 
 	// Convert Variables to map[string]any for export
 	varsMap := make(map[string]any)
-	if env.Vars != nil {
-		for k, v := range env.Vars {
-			varsMap[k] = v.Value
-		}
+	vars := tree.GetEffectiveVars(session.ID)
+	for k, v := range vars {
+		varsMap[k] = v.Value
 	}
 
 	requests := make([]Req, len(session.Requests))
@@ -79,23 +79,25 @@ func (e *JSONExporter) Export(session *model.Session, env *model.Environment) ([
 		}
 	}
 
+	baseURL := tree.GetInheritedBaseURL(session.ID)
 	output := map[string]any{
-		"session": map[string]any{
-			"name":      session.Name,
-			"envName":   session.EnvName,
-			"parentId":  session.ParentID,
-			"createdAt": session.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			"requests":  requests,
+		"session": Sess{
+			Name:      session.Name,
+			BaseURL:   baseURL,
+			ParentID:  session.ParentID,
+			CreatedAt: session.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			Requests:  requests,
 		},
 	}
 
-	if env != nil {
-		output["environment"] = Env{
-			Name:    env.Name,
-			BaseURL: env.BaseURL,
-			Headers: env.Headers,
-			Vars:    varsMap,
-		}
+	// Include effective headers and vars
+	if len(varsMap) > 0 {
+		output["variables"] = varsMap
+	}
+
+	headers := tree.GetEffectiveHeaders(session.ID)
+	if len(headers) > 0 {
+		output["headers"] = headers
 	}
 
 	return json.MarshalIndent(output, "", "  ")

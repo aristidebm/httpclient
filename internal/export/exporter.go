@@ -8,7 +8,7 @@ import (
 
 type Exporter interface {
 	Format() string
-	Export(session *model.Session, env *model.Environment) ([]byte, error)
+	Export(session *model.Session, tree *model.SessionTree) ([]byte, error)
 }
 
 var exporters = make(map[string]func() Exporter)

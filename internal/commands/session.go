@@ -61,21 +61,12 @@ func (c *sessionCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	}
 
 	switch subcmd {
-	case "switch", "rename", "drop", "move":
+	case "switch", "rename", "drop", "move", "show":
 		// Complete session names
 		var names []string
 		for _, s := range ctx.Tree.Sessions {
 			if strings.HasPrefix(s.Name, lastArg) {
 				names = append(names, s.Name)
-			}
-		}
-		return names
-	case "new", "branch":
-		// Complete environment names
-		var names []string
-		for name := range ctx.Tree.Environments {
-			if strings.HasPrefix(name, lastArg) {
-				names = append(names, name)
 			}
 		}
 		return names
@@ -85,15 +76,14 @@ func (c *sessionCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 }
 
 func sessionNew(ctx *repl.ShellContext, args []string) error {
-	if len(args) < 2 {
-		return fmt.Errorf("usage: /session new <name> <env>")
+	if len(args) < 1 {
+		return fmt.Errorf("usage: /session new <name> [base-url]")
 	}
 
 	name := args[0]
-	envName := args[1]
-
-	if _, ok := ctx.Tree.Environments[envName]; !ok {
-		return fmt.Errorf("environment %q does not exist", envName)
+	baseURL := ""
+	if len(args) >= 2 {
+		baseURL = args[1]
 	}
 
 	for _, s := range ctx.Tree.Sessions {
@@ -104,26 +94,30 @@ func sessionNew(ctx *repl.ShellContext, args []string) error {
 
 	id := fmt.Sprintf("sess_%d", time.Now().Unix())
 	sess := &model.Session{
-		ID:              id,
-		Name:            name,
-		EnvName:         envName,
-		ParentID:        "",
-		Requests:        []*model.Request{},
-		HeaderOverrides: make(map[string]string),
-		Vars:            make(model.Variables),
-		CreatedAt:       time.Now(),
+		ID:        id,
+		Name:      name,
+		ParentID:  "",
+		BaseURL:   baseURL,
+		Requests:  []*model.Request{},
+		Headers:   make(map[string]string),
+		Vars:      make(model.Variables),
+		CreatedAt: time.Now(),
 	}
 
 	ctx.Tree.Sessions[id] = sess
 	ctx.Tree.CurrentID = id
 
-	repl.PrintSuccess(fmt.Sprintf("Created session %q bound to environment %q", name, envName))
+	if baseURL != "" {
+		repl.PrintSuccess(fmt.Sprintf("Created session %q with base URL %q", name, baseURL))
+	} else {
+		repl.PrintSuccess(fmt.Sprintf("Created session %q", name))
+	}
 	return nil
 }
 
 func sessionBranch(ctx *repl.ShellContext, args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("usage: /session branch <name> [env]")
+		return fmt.Errorf("usage: /session branch <name> [base-url]")
 	}
 
 	name := args[0]
@@ -133,13 +127,9 @@ func sessionBranch(ctx *repl.ShellContext, args []string) error {
 		return fmt.Errorf("no current session")
 	}
 
-	envName := current.EnvName
+	baseURL := current.BaseURL
 	if len(args) >= 2 {
-		envName = args[1]
-	}
-
-	if _, ok := ctx.Tree.Environments[envName]; !ok {
-		return fmt.Errorf("environment %q does not exist", envName)
+		baseURL = args[1]
 	}
 
 	for _, s := range ctx.Tree.Sessions {
@@ -150,15 +140,15 @@ func sessionBranch(ctx *repl.ShellContext, args []string) error {
 
 	id := fmt.Sprintf("sess_%d", time.Now().Unix())
 	sess := &model.Session{
-		ID:              id,
-		Name:            name,
-		EnvName:         envName,
-		ParentID:        current.ID,
-		Requests:        []*model.Request{},
-		HeaderOverrides: make(map[string]string),
-		Vars:            make(model.Variables),
-		OpenAPISpec:     current.OpenAPISpec, // Inherit OpenAPI spec from parent
-		CreatedAt:       time.Now(),
+		ID:          id,
+		Name:        name,
+		ParentID:    current.ID,
+		BaseURL:     baseURL,
+		Requests:    []*model.Request{},
+		Headers:     make(map[string]string),
+		Vars:        make(model.Variables),
+		OpenAPISpec: current.OpenAPISpec, // Inherit OpenAPI spec from parent
+		CreatedAt:   time.Now(),
 	}
 
 	ctx.Tree.Sessions[id] = sess
@@ -400,11 +390,17 @@ func sessionShow(ctx *repl.ShellContext, args []string) error {
 	}
 
 	fmt.Printf("Name: %s\n", target.Name)
-	fmt.Printf("Env:  %s\n", target.EnvName)
+	if target.BaseURL != "" {
+		fmt.Printf("BaseURL: %s\n", target.BaseURL)
+	}
 	fmt.Printf("Requests: %d\n", len(target.Requests))
+	fmt.Printf("Headers: %d\n", len(target.Headers))
 	fmt.Printf("Created: %s\n", target.CreatedAt.Format("2006-01-02 15:04:05"))
 	if target.OpenAPISpec != nil {
 		fmt.Printf("OpenAPI: %s (v%s)\n", target.OpenAPISpec.Title, target.OpenAPISpec.Version)
+	}
+	if target.Auth != nil {
+		fmt.Printf("Auth: %s\n", target.Auth.Type)
 	}
 
 	return nil

@@ -164,13 +164,11 @@ func (c *infoCmd) Help() string      { return "Show current shell state" }
 
 func (c *infoCmd) Run(ctx *ShellContext, args []string) error {
 	session := ctx.Tree.Current()
-	env := ctx.Tree.CurrentEnv()
 
 	fmt.Printf("SESSION  : %s\n", session.Name)
-	if env != nil {
-		fmt.Printf("ENV      : %s (%s)\n", env.Name, env.BaseURL)
-	} else {
-		fmt.Printf("ENV      : (none)\n")
+	baseURL := ctx.Tree.GetInheritedBaseURL(session.ID)
+	if baseURL != "" {
+		fmt.Printf("BASE URL : %s\n", baseURL)
 	}
 
 	if ctx.LastReqID != "" && ctx.LastResp != nil {

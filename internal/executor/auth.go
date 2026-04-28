@@ -7,11 +7,11 @@ import (
 	"httpclient/internal/model"
 )
 
-func ApplyAuth(req *http.Request, session *model.Session, env *model.Environment) {
-	// Check session auth first, fall back to environment auth
+func ApplyAuth(req *http.Request, session *model.Session, tree *model.SessionTree) {
+	// Check session auth first, fall back to inherited auth
 	auth := session.Auth
-	if auth == nil {
-		auth = env.Auth
+	if auth == nil && tree != nil {
+		auth = tree.GetInheritedAuth(session.ID)
 	}
 
 	if auth == nil {

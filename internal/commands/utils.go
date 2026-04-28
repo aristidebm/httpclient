@@ -213,11 +213,6 @@ func (c *replayCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return fmt.Errorf("no session")
 	}
 
-	env := ctx.Tree.CurrentEnv()
-	if env == nil {
-		return fmt.Errorf("no environment")
-	}
-
 	target := ""
 	if len(args) > 0 {
 		target = args[0]
@@ -237,7 +232,7 @@ func (c *replayCmd) Run(ctx *repl.ShellContext, args []string) error {
 				continue
 			}
 			cloned := req.Clone()
-			if err := ctx.Executor.Execute(cloned, session, env); err != nil {
+			if err := ctx.Executor.Execute(cloned, session, ctx.Tree); err != nil {
 				fmt.Fprintf(os.Stderr, "Error replaying %s: %v\n", req.ID, err)
 				continue
 			}
@@ -254,7 +249,7 @@ func (c *replayCmd) Run(ctx *repl.ShellContext, args []string) error {
 		}
 
 		cloned := req.Clone()
-		if err := ctx.Executor.Execute(cloned, session, env); err != nil {
+		if err := ctx.Executor.Execute(cloned, session, ctx.Tree); err != nil {
 			return err
 		}
 		session.AddRequest(cloned)
@@ -300,11 +295,6 @@ func (c *watchCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return fmt.Errorf("no session")
 	}
 
-	env := ctx.Tree.CurrentEnv()
-	if env == nil {
-		return fmt.Errorf("no environment")
-	}
-
 	reqID := ""
 	interval := 2
 
@@ -331,7 +321,7 @@ func (c *watchCmd) Run(ctx *repl.ShellContext, args []string) error {
 
 	for {
 		cloned := req.Clone()
-		if err := ctx.Executor.Execute(cloned, session, env); err != nil {
+		if err := ctx.Executor.Execute(cloned, session, ctx.Tree); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		} else {
 			session.AddRequest(cloned)

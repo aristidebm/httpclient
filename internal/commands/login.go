@@ -64,20 +64,20 @@ func loginBasic(ctx *repl.ShellContext, args []string) error {
 		password = parts[1]
 	}
 
-	env := ctx.Tree.CurrentEnv()
-	if env == nil {
-		return fmt.Errorf("no current environment")
+	sess := ctx.Tree.Current()
+	if sess == nil {
+		return fmt.Errorf("no current session")
 	}
 
-	if env.Auth == nil {
-		env.Auth = &model.AuthConfig{}
+	if sess.Auth == nil {
+		sess.Auth = &model.AuthConfig{}
 	}
 
-	env.Auth.Type = "basic"
-	env.Auth.Username = username
-	env.Auth.Password = password
+	sess.Auth.Type = "basic"
+	sess.Auth.Username = username
+	sess.Auth.Password = password
 
-	repl.PrintSuccess(fmt.Sprintf("Basic auth configured for user %q in environment %q", username, env.Name))
+	repl.PrintSuccess(fmt.Sprintf("Basic auth configured for user %q in session %q", username, sess.Name))
 	return nil
 }
 
@@ -100,21 +100,21 @@ func loginToken(ctx *repl.ShellContext, args []string) error {
 		}
 	}
 
-	env := ctx.Tree.CurrentEnv()
-	if env == nil {
-		return fmt.Errorf("no current environment")
+	sess := ctx.Tree.Current()
+	if sess == nil {
+		return fmt.Errorf("no current session")
 	}
 
-	if env.Auth == nil {
-		env.Auth = &model.AuthConfig{}
+	if sess.Auth == nil {
+		sess.Auth = &model.AuthConfig{}
 	}
 
-	env.Auth.Type = "token"
-	env.Auth.Token = token
-	env.Auth.TokenType = tokenType
-	env.Auth.HeaderName = headerName
+	sess.Auth.Type = "token"
+	sess.Auth.Token = token
+	sess.Auth.TokenType = tokenType
+	sess.Auth.HeaderName = headerName
 
-	repl.PrintSuccess(fmt.Sprintf("Token auth configured in environment %q", env.Name))
+	repl.PrintSuccess(fmt.Sprintf("Token auth configured in session %q", sess.Name))
 	return nil
 }
 
@@ -136,21 +136,21 @@ func loginOAuth(ctx *repl.ShellContext, args []string) error {
 			clientSecret = args[3]
 		}
 
-		env := ctx.Tree.CurrentEnv()
-		if env == nil {
-			return fmt.Errorf("no current environment")
+		sess := ctx.Tree.Current()
+		if sess == nil {
+			return fmt.Errorf("no current session")
 		}
 
-		if env.Auth == nil {
-			env.Auth = &model.AuthConfig{}
+		if sess.Auth == nil {
+			sess.Auth = &model.AuthConfig{}
 		}
 
-		env.Auth.Type = "oauth"
-		env.Auth.ClientID = clientID
-		env.Auth.TokenURL = tokenURL
-		env.Auth.ClientSecret = clientSecret
+		sess.Auth.Type = "oauth"
+		sess.Auth.ClientID = clientID
+		sess.Auth.TokenURL = tokenURL
+		sess.Auth.ClientSecret = clientSecret
 
-		repl.PrintSuccess(fmt.Sprintf("OAuth config set in environment %q", env.Name))
+		repl.PrintSuccess(fmt.Sprintf("OAuth config set in session %q", sess.Name))
 		return nil
 	default:
 		return fmt.Errorf("unknown oauth subcommand: %s (use: config)", subcmd)
@@ -158,47 +158,47 @@ func loginOAuth(ctx *repl.ShellContext, args []string) error {
 }
 
 func loginClear(ctx *repl.ShellContext) error {
-	env := ctx.Tree.CurrentEnv()
-	if env == nil {
-		return fmt.Errorf("no current environment")
+	sess := ctx.Tree.Current()
+	if sess == nil {
+		return fmt.Errorf("no current session")
 	}
 
-	if env.Auth == nil {
+	if sess.Auth == nil {
 		repl.PrintInfo("No auth configured")
 		return nil
 	}
 
-	env.Auth = nil
-	repl.PrintSuccess(fmt.Sprintf("Auth cleared from environment %q", env.Name))
+	sess.Auth = nil
+	repl.PrintSuccess(fmt.Sprintf("Auth cleared from session %q", sess.Name))
 	return nil
 }
 
 func loginShow(ctx *repl.ShellContext) error {
-	env := ctx.Tree.CurrentEnv()
-	if env == nil {
-		return fmt.Errorf("no current environment")
+	sess := ctx.Tree.Current()
+	if sess == nil {
+		return fmt.Errorf("no current session")
 	}
 
-	if env.Auth == nil {
-		fmt.Println("No auth configured for this environment.")
+	if sess.Auth == nil {
+		fmt.Println("No auth configured for this session.")
 		return nil
 	}
 
-	fmt.Printf("Type: %s\n", env.Auth.Type)
-	switch env.Auth.Type {
+	fmt.Printf("Type: %s\n", sess.Auth.Type)
+	switch sess.Auth.Type {
 	case "basic":
-		fmt.Printf("Username: %s\n", env.Auth.Username)
-		if env.Auth.Password != "" {
+		fmt.Printf("Username: %s\n", sess.Auth.Username)
+		if sess.Auth.Password != "" {
 			fmt.Println("Password: ***")
 		}
 	case "token":
 		fmt.Printf("Token: ***\n")
-		fmt.Printf("TokenType: %s\n", env.Auth.TokenType)
-		fmt.Printf("Header: %s\n", env.Auth.HeaderName)
+		fmt.Printf("TokenType: %s\n", sess.Auth.TokenType)
+		fmt.Printf("Header: %s\n", sess.Auth.HeaderName)
 	case "oauth":
-		fmt.Printf("ClientID: %s\n", env.Auth.ClientID)
-		fmt.Printf("TokenURL: %s\n", env.Auth.TokenURL)
-		if env.Auth.AccessToken != "" {
+		fmt.Printf("ClientID: %s\n", sess.Auth.ClientID)
+		fmt.Printf("TokenURL: %s\n", sess.Auth.TokenURL)
+		if sess.Auth.AccessToken != "" {
 			fmt.Println("AccessToken: ***")
 		}
 	}

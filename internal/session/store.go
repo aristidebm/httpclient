@@ -12,10 +12,9 @@ import (
 )
 
 var (
-	ConfigDir        = "~/.httpclient"
-	EnvironmentsFile = "~/.httpclient/environments.json"
-	SessionsFile     = "~/.httpclient/sessions.json"
-	ConfigFile       = "~/.httpclient/config.toml"
+	ConfigDir    = "~/.httpclient"
+	SessionsFile = "~/.httpclient/sessions.json"
+	ConfigFile   = "~/.httpclient/config.toml"
 )
 
 func expandPath(path string) (string, error) {
@@ -63,20 +62,19 @@ type RequestForJSON struct {
 }
 
 type SessionForJSON struct {
-	ID              string            `json:"id"`
-	Name            string            `json:"name"`
-	EnvName         string            `json:"envName"`
-	ParentID        string            `json:"parentId"`
-	Requests        []*RequestForJSON `json:"requests"`
-	HeaderOverrides map[string]string `json:"headerOverrides"`
-	Vars            model.Variables   `json:"vars"`
-	CreatedAt       string            `json:"createdAt"`
+	ID        string            `json:"id"`
+	Name      string            `json:"name"`
+	ParentID  string            `json:"parentId"`
+	BaseURL   string            `json:"baseUrl,omitempty"`
+	Requests  []*RequestForJSON `json:"requests"`
+	Headers   map[string]string `json:"headers,omitempty"`
+	Vars      model.Variables   `json:"vars"`
+	CreatedAt string            `json:"createdAt"`
 }
 
 type SessionTreeForJSON struct {
-	Sessions     map[string]*SessionForJSON    `json:"sessions"`
-	CurrentID    string                        `json:"currentId"`
-	Environments map[string]*model.Environment `json:"environments"`
+	Sessions  map[string]*SessionForJSON `json:"sessions"`
+	CurrentID string                     `json:"currentId"`
 }
 
 func SaveTree(tree *model.SessionTree) error {
@@ -90,9 +88,8 @@ func SaveTree(tree *model.SessionTree) error {
 	}
 
 	jsonTree := SessionTreeForJSON{
-		Sessions:     make(map[string]*SessionForJSON),
-		CurrentID:    tree.CurrentID,
-		Environments: tree.Environments,
+		Sessions:  make(map[string]*SessionForJSON),
+		CurrentID: tree.CurrentID,
 	}
 
 	for id, sess := range tree.Sessions {
@@ -122,14 +119,14 @@ func SaveTree(tree *model.SessionTree) error {
 			}
 		}
 		jsonTree.Sessions[id] = &SessionForJSON{
-			ID:              sess.ID,
-			Name:            sess.Name,
-			EnvName:         sess.EnvName,
-			ParentID:        sess.ParentID,
-			Requests:        reqs,
-			HeaderOverrides: sess.HeaderOverrides,
-			Vars:            sess.Vars,
-			CreatedAt:       sess.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			ID:        sess.ID,
+			Name:      sess.Name,
+			ParentID:  sess.ParentID,
+			BaseURL:   sess.BaseURL,
+			Requests:  reqs,
+			Headers:   sess.Headers,
+			Vars:      sess.Vars,
+			CreatedAt: sess.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		}
 	}
 
@@ -162,9 +159,8 @@ func LoadTree() (*model.SessionTree, error) {
 	}
 
 	tree := &model.SessionTree{
-		Sessions:     make(map[string]*model.Session),
-		CurrentID:    jsonTree.CurrentID,
-		Environments: jsonTree.Environments,
+		Sessions:  make(map[string]*model.Session),
+		CurrentID: jsonTree.CurrentID,
 	}
 
 	for id, jsonSess := range jsonTree.Sessions {
@@ -197,14 +193,14 @@ func LoadTree() (*model.SessionTree, error) {
 			}
 		}
 		tree.Sessions[id] = &model.Session{
-			ID:              jsonSess.ID,
-			Name:            jsonSess.Name,
-			EnvName:         jsonSess.EnvName,
-			ParentID:        jsonSess.ParentID,
-			Requests:        reqs,
-			HeaderOverrides: jsonSess.HeaderOverrides,
-			Vars:            jsonSess.Vars,
-			CreatedAt:       createdAt,
+			ID:        jsonSess.ID,
+			Name:      jsonSess.Name,
+			ParentID:  jsonSess.ParentID,
+			BaseURL:   jsonSess.BaseURL,
+			Requests:  reqs,
+			Headers:   jsonSess.Headers,
+			Vars:      jsonSess.Vars,
+			CreatedAt: createdAt,
 		}
 	}
 
@@ -213,44 +209,4 @@ func LoadTree() (*model.SessionTree, error) {
 	}
 
 	return tree, nil
-}
-
-func SaveEnvironments(envs map[string]*model.Environment) error {
-	if err := ensureConfigDir(); err != nil {
-		return err
-	}
-
-	path, err := expandPath(EnvironmentsFile)
-	if err != nil {
-		return err
-	}
-
-	data, err := json.MarshalIndent(envs, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal environments: %w", err)
-	}
-
-	return os.WriteFile(path, data, 0644)
-}
-
-func LoadEnvironments() (map[string]*model.Environment, error) {
-	path, err := expandPath(EnvironmentsFile)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return make(map[string]*model.Environment), nil
-		}
-		return nil, err
-	}
-
-	var envs map[string]*model.Environment
-	if err := json.Unmarshal(data, &envs); err != nil {
-		return nil, err
-	}
-
-	return envs, nil
 }

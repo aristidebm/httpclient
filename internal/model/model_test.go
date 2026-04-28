@@ -59,59 +59,6 @@ func TestRequestIsExecuted(t *testing.T) {
 	}
 }
 
-func TestEnvironmentClone(t *testing.T) {
-	original := &Environment{
-		Name:    "test",
-		BaseURL: "https://api.example.com/",
-		Headers: map[string]string{"Authorization": "Bearer token"},
-		Vars:    Variables{"api_key": {Name: "api_key", Value: "secret123"}},
-	}
-
-	cloned := original.Clone()
-
-	if cloned.Name != original.Name {
-		t.Errorf("expected Name %s, got %s", original.Name, cloned.Name)
-	}
-	if cloned.BaseURL != original.BaseURL {
-		t.Errorf("expected BaseURL %s, got %s", original.BaseURL, cloned.BaseURL)
-	}
-
-	cloned.Vars["new_key"] = &Variable{Name: "new_key", Value: "new_value"}
-	if original.Vars["new_key"] != nil {
-		t.Error("clone should have independent Vars map")
-	}
-}
-
-func TestEnvironmentResolve(t *testing.T) {
-	env := &Environment{
-		Name:    "test",
-		BaseURL: "https://api.example.com/",
-		Headers: map[string]string{"X-Custom": "header-value"},
-		Vars:    Variables{"var1": {Name: "var1", Value: "value1"}},
-	}
-
-	val, ok := env.Resolve("var1")
-	if !ok {
-		t.Error("expected to resolve var1")
-	}
-	if val != "value1" {
-		t.Errorf("expected value1, got %v", val)
-	}
-
-	val, ok = env.Resolve("X-Custom")
-	if !ok {
-		t.Error("expected to resolve X-Custom header")
-	}
-	if val != "header-value" {
-		t.Errorf("expected header-value, got %v", val)
-	}
-
-	_, ok = env.Resolve("nonexistent")
-	if ok {
-		t.Error("expected false for nonexistent key")
-	}
-}
-
 func TestSessionNextRequestID(t *testing.T) {
 	s := &Session{}
 	if s.NextRequestID() != "r1" {
@@ -196,26 +143,6 @@ func TestNewSessionTree(t *testing.T) {
 	}
 	if current.Name != "default" {
 		t.Errorf("expected session name default, got %s", current.Name)
-	}
-
-	env := tree.CurrentEnv()
-	if env == nil {
-		t.Error("expected current env to not be nil")
-	}
-	if env.Name != "local" {
-		t.Errorf("expected env name local, got %s", env.Name)
-	}
-}
-
-func TestSessionTreeCurrentEnv(t *testing.T) {
-	tree := NewSessionTree()
-	env := tree.CurrentEnv()
-	if env == nil {
-		t.Fatal("expected env")
-	}
-	env.SetBaseURL("https://api.example.com")
-	if env.BaseURL != "https://api.example.com/" {
-		t.Errorf("expected trailing slash, got %s", env.BaseURL)
 	}
 }
 

@@ -35,8 +35,6 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 		flag := args[i]
 		if flag == "--session" || flag == "-session" {
 			scope = "session"
-		} else if flag == "--env" || flag == "-env" {
-			scope = "env"
 		} else if flag == "--shell" || flag == "-shell" {
 			scope = "shell"
 		} else if flag == "--public" || flag == "-public" {
@@ -56,8 +54,6 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 	for _, flag := range rem {
 		if flag == "--session" || flag == "-session" {
 			scope = "session"
-		} else if flag == "--env" || flag == "-env" {
-			scope = "env"
 		} else if flag == "--shell" || flag == "-shell" {
 			scope = "shell"
 		} else if flag == "--public" || flag == "-public" {
@@ -82,7 +78,7 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 
 	case "set", "s":
 		if len(nonFlagArgs) < 1 {
-			return fmt.Errorf("usage: /vars set [--session|--env|--shell] <key> [value] or <key>=<value>")
+			return fmt.Errorf("usage: /vars set [--session|--shell] <key> [value] or <key>=<value>")
 		}
 		arg := nonFlagArgs[0]
 		if strings.Contains(arg, "=") {
@@ -105,7 +101,7 @@ func (c *varsCmd) Run(ctx *repl.ShellContext, args []string) error {
 
 	case "unset", "delete", "u":
 		if len(nonFlagArgs) < 1 {
-			return fmt.Errorf("usage: /vars unset [--session|--env|--shell] <key>")
+			return fmt.Errorf("usage: /vars unset [--session|--shell] <key>")
 		}
 		key = nonFlagArgs[0]
 		if scope == "" {
@@ -162,24 +158,21 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 		}
 	}
 
-	// Environment vars
-	env := ctx.Tree.CurrentEnv()
-	envVars := make(map[string]bool)
-	if env != nil && (filterScope == "" || filterScope == "env") {
-		for _, v := range env.Vars.ListPublic() {
-			envVars[v.Name] = true
-			active := true
-			session := ctx.Tree.Current()
-			if session != nil {
-				if _, ok := session.Vars[v.Name]; ok {
-					active = false
-				}
-			}
+	// Inherited env vars (from session tree)
+	session := ctx.Tree.Current()
+	if session != nil && (filterScope == "" || filterScope == "inherited") {
+		inheritedVars := ctx.Tree.GetEffectiveVars(session.ID)
+		sessionVars := make(map[string]bool)
+		for k := range session.Vars {
+			sessionVars[k] = true
+		}
 
+		for k, v := range inheritedVars {
+			active := !sessionVars[k] // inactive if overridden by session
 			entries = append(entries, varEntry{
-				key:     v.Name,
+				key:     k,
 				value:   fmt.Sprintf("%v", v.Value),
-				scope:   "env:" + env.Name,
+				scope:   "inherited",
 				active:  active,
 				public:  v.Public,
 				updated: v.Updated,
@@ -188,7 +181,6 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 	}
 
 	// Session vars
-	session := ctx.Tree.Current()
 	if session != nil && (filterScope == "" || filterScope == "session") {
 		for _, v := range session.Vars.ListPublic() {
 			entries = append(entries, varEntry{
@@ -232,17 +224,6 @@ func (c *varsCmd) setVar(ctx *repl.ShellContext, scope, key, value string, isPub
 		session.Vars.Set(key, value, model.VarScopeSession)
 		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (session)", key, value))
 
-	case "env":
-		env := ctx.Tree.CurrentEnv()
-		if env == nil {
-			return fmt.Errorf("no current environment")
-		}
-		if env.Vars == nil {
-			env.Vars = make(model.Variables)
-		}
-		env.Vars.Set(key, value, model.VarScopeEnv)
-		repl.PrintSuccess(fmt.Sprintf("Set %s = %s (env: %s)", key, value, env.Name))
-
 	case "shell":
 		if ctx.Vars == nil {
 			ctx.Vars = make(model.Variables)
@@ -261,7 +242,7 @@ func (c *varsCmd) getVar(ctx *repl.ShellContext, key string) error {
 		return nil
 	}
 
-	// Check session overrides
+	// Check session vars
 	session := ctx.Tree.Current()
 	if session != nil {
 		if v, ok := session.Vars[key]; ok {
@@ -270,11 +251,11 @@ func (c *varsCmd) getVar(ctx *repl.ShellContext, key string) error {
 		}
 	}
 
-	// Check environment vars
-	env := ctx.Tree.CurrentEnv()
-	if env != nil {
-		if v, ok := env.Vars[key]; ok {
-			fmt.Printf("env.%s = %v\n", key, v)
+	// Check inherited vars
+	if session != nil {
+		inheritedVars := ctx.Tree.GetEffectiveVars(session.ID)
+		if v, ok := inheritedVars[key]; ok {
+			fmt.Printf("inherited.%s = %v\n", key, v.Value)
 			return nil
 		}
 	}
@@ -295,17 +276,6 @@ func (c *varsCmd) unsetVar(ctx *repl.ShellContext, scope, key string) error {
 			}
 		}
 		return fmt.Errorf("variable %q not found in session", key)
-
-	case "env":
-		env := ctx.Tree.CurrentEnv()
-		if env != nil {
-			if _, ok := env.Vars[key]; ok {
-				delete(env.Vars, key)
-				repl.PrintSuccess(fmt.Sprintf("Unset %s (env: %s)", key, env.Name))
-				return nil
-			}
-		}
-		return fmt.Errorf("variable %q not found in environment", key)
 
 	case "shell":
 		if _, ok := ctx.Vars[key]; ok {
@@ -329,12 +299,8 @@ func (c *varsCmd) clearVars(ctx *repl.ShellContext, scope string, clearAll bool)
 		if session != nil {
 			session.Vars = make(model.Variables)
 		}
-		env := ctx.Tree.CurrentEnv()
-		if env != nil {
-			env.Vars = make(model.Variables)
-		}
 		ctx.Vars = make(model.Variables)
-		repl.PrintSuccess("Cleared all variables (session, env, shell)")
+		repl.PrintSuccess("Cleared all variables (session, shell)")
 		return nil
 	}
 
@@ -347,20 +313,12 @@ func (c *varsCmd) clearVars(ctx *repl.ShellContext, scope string, clearAll bool)
 		session.Vars = make(model.Variables)
 		repl.PrintSuccess("Cleared all session variables")
 
-	case "env":
-		env := ctx.Tree.CurrentEnv()
-		if env == nil {
-			return fmt.Errorf("no current environment")
-		}
-		env.Vars = make(model.Variables)
-		repl.PrintSuccess(fmt.Sprintf("Cleared all variables in environment %q", env.Name))
-
 	case "shell":
 		ctx.Vars = make(model.Variables)
 		repl.PrintSuccess("Cleared all shell variables")
 
 	default:
-		return fmt.Errorf("unknown scope: %s (use: session, env, shell, or --all)", scope)
+		return fmt.Errorf("unknown scope: %s (use: session, shell, or --all)", scope)
 	}
 
 	return nil
@@ -379,7 +337,7 @@ func (c *varsCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 
 	// Complete flags
 	if strings.HasPrefix(fields[len(fields)-1], "-") {
-		return []string{"--session", "--env", "--shell"}
+		return []string{"--session", "--shell"}
 	}
 
 	// Complete variable names
@@ -392,10 +350,9 @@ func (c *varsCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 		for k := range session.Vars {
 			names = append(names, k)
 		}
-	}
-	env := ctx.Tree.CurrentEnv()
-	if env != nil {
-		for k := range env.Vars {
+		// Add inherited vars
+		inheritedVars := ctx.Tree.GetEffectiveVars(session.ID)
+		for k := range inheritedVars {
 			names = append(names, k)
 		}
 	}
