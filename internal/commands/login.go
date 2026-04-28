@@ -157,9 +157,9 @@ func loginOAuth(ctx *repl.ShellContext, args []string) error {
 		sess.Auth.TokenURL = tokenURL
 		sess.Auth.ClientSecret = clientSecret
 
-		// Set AuthURL if provided
+		// Set authURL in vars if provided
 		if authURL != "" {
-			sess.AuthURL = authURL
+			sess.Vars.Set("authURL", authURL, model.VarScopeSession)
 		}
 
 		repl.PrintSuccess(fmt.Sprintf("OAuth config set in session %q", sess.Name))

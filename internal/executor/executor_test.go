@@ -16,10 +16,9 @@ func TestClientExecuteSuccess(t *testing.T) {
 			"test": {
 				ID:       "test",
 				Name:     "test",
-				BaseURL:  "https://httpbin.org",
 				Requests: []*model.Request{},
 				Headers:  make(map[string]string),
-				Vars:     model.Variables{},
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://httpbin.org", Scope: model.VarScopeSession, Public: true}},
 			},
 		},
 		CurrentID: "test",
@@ -63,10 +62,9 @@ func TestClientTimeout(t *testing.T) {
 			"test": {
 				ID:       "test",
 				Name:     "test",
-				BaseURL:  "https://httpbin.org",
 				Requests: []*model.Request{},
 				Headers:  make(map[string]string),
-				Vars:     model.Variables{},
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://httpbin.org", Scope: model.VarScopeSession, Public: true}},
 			},
 		},
 		CurrentID: "test",
@@ -102,10 +100,9 @@ func TestHeaderMerging(t *testing.T) {
 			"test": {
 				ID:       "test",
 				Name:     "test",
-				BaseURL:  "https://httpbin.org",
 				Requests: []*model.Request{},
 				Headers:  map[string]string{"X-Foo": "env"},
-				Vars:     model.Variables{},
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://httpbin.org", Scope: model.VarScopeSession, Public: true}},
 			},
 		},
 		CurrentID: "test",
@@ -140,10 +137,9 @@ func TestURLResolution(t *testing.T) {
 			"test": {
 				ID:       "test",
 				Name:     "test",
-				BaseURL:  "https://httpbin.org",
 				Requests: []*model.Request{},
 				Headers:  make(map[string]string),
-				Vars:     model.Variables{},
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://httpbin.org", Scope: model.VarScopeSession, Public: true}},
 			},
 		},
 		CurrentID: "test",
@@ -177,10 +173,9 @@ func TestNon2xxResponse(t *testing.T) {
 			"test": {
 				ID:       "test",
 				Name:     "test",
-				BaseURL:  "https://httpbin.org",
 				Requests: []*model.Request{},
 				Headers:  make(map[string]string),
-				Vars:     model.Variables{},
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://httpbin.org", Scope: model.VarScopeSession, Public: true}},
 			},
 		},
 		CurrentID: "test",
@@ -210,10 +205,9 @@ func TestApplyAuth(t *testing.T) {
 			"test": {
 				ID:       "test",
 				Name:     "test",
-				BaseURL:  "https://api.example.com",
 				Requests: []*model.Request{},
 				Headers:  make(map[string]string),
-				Vars:     model.Variables{},
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://api.example.com", Scope: model.VarScopeSession, Public: true}},
 				Auth: &model.AuthConfig{
 					Type:      "token",
 					Token:     "my-token",
@@ -241,10 +235,9 @@ func TestApplyAuthWithTokenPrefix(t *testing.T) {
 			"test": {
 				ID:       "test",
 				Name:     "test",
-				BaseURL:  "https://api.example.com",
 				Requests: []*model.Request{},
 				Headers:  make(map[string]string),
-				Vars:     model.Variables{},
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://api.example.com", Scope: model.VarScopeSession, Public: true}},
 				Auth: &model.AuthConfig{
 					Type:      "token",
 					Token:     "my-token",

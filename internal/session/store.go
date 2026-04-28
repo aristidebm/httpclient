@@ -65,7 +65,8 @@ type SessionForJSON struct {
 	ID        string            `json:"id"`
 	Name      string            `json:"name"`
 	ParentID  string            `json:"parentId"`
-	BaseURL   string            `json:"baseUrl,omitempty"`
+	BaseURL   string            `json:"baseUrl,omitempty"` // deprecated, use vars["baseURL"]
+	AuthURL   string            `json:"authUrl,omitempty"` // deprecated, use vars["authURL"]
 	Requests  []*RequestForJSON `json:"requests"`
 	Headers   map[string]string `json:"headers,omitempty"`
 	Vars      model.Variables   `json:"vars"`
@@ -122,7 +123,6 @@ func SaveTree(tree *model.SessionTree) error {
 			ID:        sess.ID,
 			Name:      sess.Name,
 			ParentID:  sess.ParentID,
-			BaseURL:   sess.BaseURL,
 			Requests:  reqs,
 			Headers:   sess.Headers,
 			Vars:      sess.Vars,
@@ -192,16 +192,25 @@ func LoadTree() (*model.SessionTree, error) {
 				Note:        jsonReq.Note,
 			}
 		}
-		tree.Sessions[id] = &model.Session{
+		sess := &model.Session{
 			ID:        jsonSess.ID,
 			Name:      jsonSess.Name,
 			ParentID:  jsonSess.ParentID,
-			BaseURL:   jsonSess.BaseURL,
 			Requests:  reqs,
 			Headers:   jsonSess.Headers,
 			Vars:      jsonSess.Vars,
 			CreatedAt: createdAt,
 		}
+
+		// Migrate deprecated BaseURL and AuthURL to vars
+		if jsonSess.BaseURL != "" {
+			sess.Vars.Set("baseURL", jsonSess.BaseURL, model.VarScopeSession)
+		}
+		if jsonSess.AuthURL != "" {
+			sess.Vars.Set("authURL", jsonSess.AuthURL, model.VarScopeSession)
+		}
+
+		tree.Sessions[id] = sess
 	}
 
 	if tree.Current() == nil {

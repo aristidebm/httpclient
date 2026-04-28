@@ -30,7 +30,6 @@ type Session struct {
 	ID          string
 	Name        string
 	ParentID    string
-	BaseURL     string // session-specific base URL
 	Requests    []*Request
 	Headers     map[string]string // per-session headers
 	Vars        Variables
@@ -129,7 +128,6 @@ func (s *Session) Clone() *Session {
 		ID:          s.ID,
 		Name:        s.Name,
 		ParentID:    s.ParentID,
-		BaseURL:     s.BaseURL,
 		Requests:    requests,
 		Headers:     headers,
 		Vars:        vars,

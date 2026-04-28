@@ -115,11 +115,15 @@ func sessionNew(ctx *repl.ShellContext, args []string) error {
 		ID:        id,
 		Name:      name,
 		ParentID:  "",
-		BaseURL:   baseURL,
 		Requests:  []*model.Request{},
 		Headers:   make(map[string]string),
 		Vars:      make(model.Variables),
 		CreatedAt: time.Now(),
+	}
+
+	// Set baseURL in vars if provided
+	if baseURL != "" {
+		sess.Vars.Set("baseURL", baseURL, model.VarScopeSession)
 	}
 
 	ctx.Tree.Sessions[id] = sess
@@ -145,7 +149,13 @@ func sessionBranch(ctx *repl.ShellContext, args []string) error {
 		return fmt.Errorf("no current session")
 	}
 
-	baseURL := current.BaseURL
+	// Get baseURL from current session's vars or use provided one
+	baseURL := ""
+	if v, ok := current.Vars["baseURL"]; ok && v.Value != nil {
+		if s, ok := v.Value.(string); ok {
+			baseURL = s
+		}
+	}
 	if len(args) >= 2 {
 		baseURL = args[1]
 	}
@@ -160,7 +170,6 @@ func sessionBranch(ctx *repl.ShellContext, args []string) error {
 		ID:          id,
 		Name:        name,
 		ParentID:    current.ID,
-		BaseURL:     baseURL,
 		Requests:    []*model.Request{},
 		Headers:     make(map[string]string),
 		Vars:        make(model.Variables),
@@ -168,7 +177,13 @@ func sessionBranch(ctx *repl.ShellContext, args []string) error {
 		CreatedAt:   time.Now(),
 	}
 
+	// Set baseURL in vars if provided
+	if baseURL != "" {
+		sess.Vars.Set("baseURL", baseURL, model.VarScopeSession)
+	}
+
 	ctx.Tree.Sessions[id] = sess
+	ctx.Tree.PreviousID = ctx.Tree.CurrentID
 	ctx.Tree.CurrentID = id
 
 	repl.PrintSuccess(fmt.Sprintf("Branched to new session %q (child of %q)", name, current.Name))
@@ -413,12 +428,15 @@ func sessionShow(ctx *repl.ShellContext, args []string) error {
 	}
 
 	fmt.Printf("Name: %s\n", target.Name)
-	if target.BaseURL != "" {
-		fmt.Printf("BaseURL: %s\n", target.BaseURL)
+
+	// Show baseURL and authURL from vars
+	if v, ok := target.Vars["baseURL"]; ok && v.Value != nil {
+		fmt.Printf("BaseURL: %v\n", v.Value)
 	}
-	if target.AuthURL != "" {
-		fmt.Printf("AuthURL: %s\n", target.AuthURL)
+	if v, ok := target.Vars["authURL"]; ok && v.Value != nil {
+		fmt.Printf("AuthURL: %v\n", v.Value)
 	}
+
 	fmt.Printf("Requests: %d\n", len(target.Requests))
 	fmt.Printf("Headers: %d\n", len(target.Headers))
 	fmt.Printf("Created: %s\n", target.CreatedAt.Format("2006-01-02 15:04:05"))

@@ -13,7 +13,6 @@ func NewSessionTree() *SessionTree {
 		ID:        "default",
 		Name:      "default",
 		ParentID:  "",
-		BaseURL:   "",
 		Requests:  make([]*Request, 0),
 		Headers:   make(map[string]string),
 		Vars:      make(Variables),
@@ -118,7 +117,7 @@ func (t *SessionTree) GetInheritedAuth(sessionID string) *AuthConfig {
 	return nil
 }
 
-// GetInheritedBaseURL returns the first BaseURL found in the ancestor chain
+// GetInheritedBaseURL returns the first baseURL found in the ancestor chain (from vars)
 func (t *SessionTree) GetInheritedBaseURL(sessionID string) string {
 	sess := t.Sessions[sessionID]
 	if sess == nil {
@@ -128,8 +127,10 @@ func (t *SessionTree) GetInheritedBaseURL(sessionID string) string {
 	visited := make(map[string]bool)
 	current := sess
 	for current != nil && !visited[current.ID] {
-		if current.BaseURL != "" {
-			return current.BaseURL
+		if v, ok := current.Vars["baseURL"]; ok && v.Value != nil {
+			if s, ok := v.Value.(string); ok && s != "" {
+				return s
+			}
 		}
 		visited[current.ID] = true
 		if current.ParentID == "" {
@@ -171,4 +172,38 @@ func (t *SessionTree) GetEffectiveVars(sessionID string) Variables {
 	}
 
 	return inherited
+}
+
+// GetEffectiveAuthURL returns the auth URL for a session (from vars, inherited, or BaseURL)
+func (t *SessionTree) GetEffectiveAuthURL(sessionID string) string {
+	sess := t.Sessions[sessionID]
+	if sess == nil {
+		return ""
+	}
+
+	// Use session's authURL if set in vars
+	if v, ok := sess.Vars["authURL"]; ok && v.Value != nil {
+		if s, ok := v.Value.(string); ok && s != "" {
+			return s
+		}
+	}
+
+	// Fall back to inherited authURL
+	visited := make(map[string]bool)
+	current := sess
+	for current != nil && !visited[current.ID] {
+		if v, ok := current.Vars["authURL"]; ok && v.Value != nil {
+			if s, ok := v.Value.(string); ok && s != "" {
+				return s
+			}
+		}
+		visited[current.ID] = true
+		if current.ParentID == "" {
+			break
+		}
+		current = t.Sessions[current.ParentID]
+	}
+
+	// Fall back to BaseURL
+	return t.GetInheritedBaseURL(sessionID)
 }

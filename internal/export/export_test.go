@@ -11,9 +11,8 @@ func TestJSONExporter(t *testing.T) {
 		Sessions: map[string]*model.Session{
 			"test": {
 				Name:    "test-session",
-				BaseURL: "https://api.example.com",
 				Headers: map[string]string{"Authorization": "Bearer token"},
-				Vars:    model.Variables{"api_key": {Name: "api_key", Value: "secret"}},
+				Vars:    model.Variables{"baseURL": {Name: "baseURL", Value: "https://api.example.com", Scope: model.VarScopeSession, Public: true}, "api_key": {Name: "api_key", Value: "secret", Scope: model.VarScopeSession, Public: true}},
 				Requests: []*model.Request{
 					{
 						ID:     "r1",
@@ -50,9 +49,8 @@ func TestCurlExporter(t *testing.T) {
 		Sessions: map[string]*model.Session{
 			"test": {
 				Name:    "test-session",
-				BaseURL: "https://api.example.com",
 				Headers: map[string]string{"Authorization": "Bearer token"},
-				Vars:    model.Variables{},
+				Vars:    model.Variables{"baseURL": {Name: "baseURL", Value: "https://api.example.com", Scope: model.VarScopeSession, Public: true}},
 				Requests: []*model.Request{
 					{
 						ID:      "r1",
@@ -91,9 +89,8 @@ func TestHTTPFileExporter(t *testing.T) {
 		Sessions: map[string]*model.Session{
 			"test": {
 				Name:    "test-session",
-				BaseURL: "https://api.example.com",
 				Headers: map[string]string{"Authorization": "Bearer token"},
-				Vars:    model.Variables{},
+				Vars:    model.Variables{"baseURL": {Name: "baseURL", Value: "https://api.example.com", Scope: model.VarScopeSession, Public: true}},
 				Requests: []*model.Request{
 					{
 						ID:      "r1",
