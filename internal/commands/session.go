@@ -314,6 +314,7 @@ func sessionDrop(ctx *repl.ShellContext, args []string) error {
 
 	name := args[0]
 	current := ctx.Tree.Current()
+	currentID := ctx.Tree.CurrentID
 
 	// Collect all descendants of current session
 	descendants := make(map[string]bool)
@@ -326,10 +327,10 @@ func sessionDrop(ctx *repl.ShellContext, args []string) error {
 				collectDescendants(child.ID)
 			}
 		}
-		collectDescendants(current.ID)
+		collectDescendants(currentID)
 	}
 
-	// First, try to find in current session's hierarchy (descendants)
+	// First, find in current session's hierarchy (descendants)
 	var target *model.Session
 	var targetID string
 	for id, s := range ctx.Tree.Sessions {
@@ -352,22 +353,36 @@ func sessionDrop(ctx *repl.ShellContext, args []string) error {
 	}
 
 	if target == nil {
-		return fmt.Errorf("session %q not found", name)
+		return fmt.Errorf("session %q not found (only descendants or top-level sessions can be dropped)", name)
 	}
 
-	// Check for children
-	children := ctx.Tree.Children(targetID)
-	if len(children) > 0 {
-		return fmt.Errorf("refuse to drop session %q: it has %d child session(s)", name, len(children))
-	}
-
-	// Can't drop current session without switching
-	if targetID == ctx.Tree.CurrentID {
+	// Can't drop current session
+	if targetID == currentID {
 		return fmt.Errorf("cannot drop current session; switch to another first")
 	}
 
-	delete(ctx.Tree.Sessions, targetID)
-	repl.PrintSuccess(fmt.Sprintf("Dropped session %q", name))
+	// Collect all descendants of target to delete them too
+	toDelete := []string{targetID}
+	var collectAllDescendants func(sessionID string)
+	collectAllDescendants = func(sessionID string) {
+		children := ctx.Tree.Children(sessionID)
+		for _, child := range children {
+			toDelete = append(toDelete, child.ID)
+			collectAllDescendants(child.ID)
+		}
+	}
+	collectAllDescendants(targetID)
+
+	// Delete all (duplicates removed by map)
+	deleted := make(map[string]bool)
+	for _, id := range toDelete {
+		if !deleted[id] {
+			delete(ctx.Tree.Sessions, id)
+			deleted[id] = true
+		}
+	}
+
+	repl.PrintSuccess(fmt.Sprintf("Dropped session %q and %d descendant(s)", name, len(deleted)-1))
 	return nil
 }
 
