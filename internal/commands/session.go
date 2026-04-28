@@ -334,7 +334,7 @@ func sessionDrop(ctx *repl.ShellContext, args []string) error {
 		collectDescendants(current.ID)
 	}
 
-	// First, try to find in current session's hierarchy
+	// First, try to find in current session's hierarchy (descendants)
 	for id, s := range ctx.Tree.Sessions {
 		if s.Name == name && descendants[id] {
 			target = s
@@ -343,10 +343,10 @@ func sessionDrop(ctx *repl.ShellContext, args []string) error {
 		}
 	}
 
-	// If not found in hierarchy, fall back to any session with that name
+	// If not found in hierarchy, try top-level sessions (no parent)
 	if target == nil {
 		for id, s := range ctx.Tree.Sessions {
-			if s.Name == name {
+			if s.Name == name && s.ParentID == "" {
 				target = s
 				targetID = id
 				break
