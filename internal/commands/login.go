@@ -120,20 +120,27 @@ func loginToken(ctx *repl.ShellContext, args []string) error {
 
 func loginOAuth(ctx *repl.ShellContext, args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("usage: /login oauth config <client-id> <token-url> [client-secret]")
+		return fmt.Errorf("usage: /login oauth config <client-id> <token-url> [client-secret] [--auth-url=<url>]")
 	}
 
 	subcmd := args[0]
 	switch subcmd {
 	case "config":
 		if len(args) < 3 {
-			return fmt.Errorf("usage: /login oauth config <client-id> <token-url> [client-secret]")
+			return fmt.Errorf("usage: /login oauth config <client-id> <token-url> [client-secret] [--auth-url=<url>]")
 		}
 		clientID := args[1]
 		tokenURL := args[2]
 		clientSecret := ""
-		if len(args) >= 4 {
-			clientSecret = args[3]
+
+		// Parse optional args
+		var authURL string
+		for _, arg := range args[3:] {
+			if strings.HasPrefix(arg, "--auth-url=") {
+				authURL = strings.TrimPrefix(arg, "--auth-url=")
+			} else if clientSecret == "" {
+				clientSecret = arg
+			}
 		}
 
 		sess := ctx.Tree.Current()
@@ -149,6 +156,11 @@ func loginOAuth(ctx *repl.ShellContext, args []string) error {
 		sess.Auth.ClientID = clientID
 		sess.Auth.TokenURL = tokenURL
 		sess.Auth.ClientSecret = clientSecret
+
+		// Set AuthURL if provided
+		if authURL != "" {
+			sess.AuthURL = authURL
+		}
 
 		repl.PrintSuccess(fmt.Sprintf("OAuth config set in session %q", sess.Name))
 		return nil
@@ -185,6 +197,13 @@ func loginShow(ctx *repl.ShellContext) error {
 	}
 
 	fmt.Printf("Type: %s\n", sess.Auth.Type)
+
+	// Show effective auth URL
+	effectiveAuthURL := ctx.Tree.GetEffectiveAuthURL(sess.ID)
+	if effectiveAuthURL != "" {
+		fmt.Printf("AuthURL: %s\n", effectiveAuthURL)
+	}
+
 	switch sess.Auth.Type {
 	case "basic":
 		fmt.Printf("Username: %s\n", sess.Auth.Username)

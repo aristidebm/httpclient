@@ -19,6 +19,11 @@ func BuildPrompt(ctx *ShellContext) string {
 		}
 	}
 
+	// Show auth indicator if session or inherited auth is set
+	if session.Auth != nil || ctx.Tree.GetInheritedAuth(session.ID) != nil {
+		sessionPart += color.New(color.FgYellow).Sprint(" [A]")
+	}
+
 	prompt := color.New(color.FgHiBlack).Sprint("› ")
 
 	return "[" + sessionPart + "] " + prompt

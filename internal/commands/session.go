@@ -14,7 +14,7 @@ type sessionCmd struct{}
 func (c *sessionCmd) Name() string      { return "session" }
 func (c *sessionCmd) Aliases() []string { return nil }
 func (c *sessionCmd) Help() string {
-	return "Manage sessions: new, branch, switch, list, show, rename, drop, move, set-base"
+	return "Manage sessions: new, branch, switch, list, show, rename, drop, move"
 }
 
 func (c *sessionCmd) Run(ctx *repl.ShellContext, args []string) error {
@@ -42,8 +42,6 @@ func (c *sessionCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return sessionShow(ctx, args[1:])
 	case "requests":
 		return sessionRequests(ctx, args[1:])
-	case "set-base":
-		return sessionSetBase(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown session subcommand: %s", subcmd)
 	}
@@ -63,7 +61,7 @@ func (c *sessionCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	fields := strings.Fields(partial)
 
 	if len(fields) == 1 {
-		return []string{"new", "branch", "switch", "list", "show", "rename", "drop", "move", "requests", "set-base"}
+		return []string{"new", "branch", "switch", "list", "show", "rename", "drop", "move", "requests"}
 	}
 
 	subcmd := fields[0]
@@ -220,16 +218,8 @@ func sessionList(ctx *repl.ShellContext) error {
 			prefix = prefix + "└─ "
 		}
 
-		// Show session name with parent if it's a child
-		sessionDisplay := sess.Name
-		if sess.ParentID != "" {
-			if parent := ctx.Tree.Sessions[sess.ParentID]; parent != nil {
-				sessionDisplay = fmt.Sprintf("%s@%s", sess.Name, parent.Name)
-			}
-		}
-
 		fmt.Printf("%s%s%s %d requests %s\n",
-			prefix, marker, sessionDisplay, len(sess.Requests), sess.CreatedAt.Format("2006-01-02 15:04"))
+			prefix, marker, sess.Name, len(sess.Requests), sess.CreatedAt.Format("2006-01-02 15:04"))
 	}
 
 	// Find root sessions (no parent)
@@ -392,22 +382,6 @@ func sessionRequests(ctx *repl.ShellContext, args []string) error {
 	return nil
 }
 
-func sessionSetBase(ctx *repl.ShellContext, args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("usage: /session set-base <url>")
-	}
-
-	url := args[0]
-	session := ctx.Tree.Current()
-	if session == nil {
-		return fmt.Errorf("no current session")
-	}
-
-	session.BaseURL = url
-	repl.PrintSuccess(fmt.Sprintf("Set base URL to %q for session %q", url, session.Name))
-	return nil
-}
-
 func sessionShow(ctx *repl.ShellContext, args []string) error {
 	name := ""
 	if len(args) >= 1 {
@@ -435,6 +409,9 @@ func sessionShow(ctx *repl.ShellContext, args []string) error {
 	fmt.Printf("Name: %s\n", target.Name)
 	if target.BaseURL != "" {
 		fmt.Printf("BaseURL: %s\n", target.BaseURL)
+	}
+	if target.AuthURL != "" {
+		fmt.Printf("AuthURL: %s\n", target.AuthURL)
 	}
 	fmt.Printf("Requests: %d\n", len(target.Requests))
 	fmt.Printf("Headers: %d\n", len(target.Headers))
