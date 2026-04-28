@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	_ "httpclient/internal/commands"
 	"httpclient/internal/input"
@@ -134,23 +133,7 @@ func switchToSession(ctx *repl.ShellContext, name string) error {
 		}
 	}
 
-	id := fmt.Sprintf("sess_%d", time.Now().Unix())
-	sess := &model.Session{
-		ID:        id,
-		Name:      name,
-		ParentID:  "",
-		BaseURL:   "",
-		Requests:  []*model.Request{},
-		Headers:   make(map[string]string),
-		Vars:      make(model.Variables),
-		CreatedAt: time.Now(),
-	}
-
-	ctx.Tree.Sessions[id] = sess
-	ctx.Tree.CurrentID = id
-
-	fmt.Printf("Created new session %q\n", name)
-	return nil
+	return fmt.Errorf("session %q not found", name)
 }
 
 func importPath(ctx *repl.ShellContext, target string) error {

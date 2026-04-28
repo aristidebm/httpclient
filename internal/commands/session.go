@@ -14,7 +14,7 @@ type sessionCmd struct{}
 func (c *sessionCmd) Name() string      { return "session" }
 func (c *sessionCmd) Aliases() []string { return nil }
 func (c *sessionCmd) Help() string {
-	return "Manage sessions: new, branch, switch, list, show, rename, drop, move"
+	return "Manage sessions: new, branch, switch, list, show, rename, drop, move, set-base"
 }
 
 func (c *sessionCmd) Run(ctx *repl.ShellContext, args []string) error {
@@ -42,16 +42,28 @@ func (c *sessionCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return sessionShow(ctx, args[1:])
 	case "requests":
 		return sessionRequests(ctx, args[1:])
+	case "set-base":
+		return sessionSetBase(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown session subcommand: %s", subcmd)
 	}
+}
+
+// isDuplicateName checks if a session name already exists with the same parent
+func isDuplicateName(ctx *repl.ShellContext, name string, parentID string) bool {
+	for _, s := range ctx.Tree.Sessions {
+		if s.Name == name && s.ParentID == parentID {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *sessionCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	fields := strings.Fields(partial)
 
 	if len(fields) == 1 {
-		return []string{"new", "branch", "switch", "list", "show", "rename", "drop", "move", "requests"}
+		return []string{"new", "branch", "switch", "list", "show", "rename", "drop", "move", "requests", "set-base"}
 	}
 
 	subcmd := fields[0]
@@ -63,6 +75,15 @@ func (c *sessionCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	switch subcmd {
 	case "switch", "rename", "drop", "move", "show":
 		// Complete session names
+		var names []string
+		for _, s := range ctx.Tree.Sessions {
+			if strings.HasPrefix(s.Name, lastArg) {
+				names = append(names, s.Name)
+			}
+		}
+		return names
+	case "new", "branch":
+		// Complete session names (for branch, shows existing sessions as potential parents)
 		var names []string
 		for _, s := range ctx.Tree.Sessions {
 			if strings.HasPrefix(s.Name, lastArg) {
@@ -86,10 +107,9 @@ func sessionNew(ctx *repl.ShellContext, args []string) error {
 		baseURL = args[1]
 	}
 
-	for _, s := range ctx.Tree.Sessions {
-		if s.Name == name {
-			return fmt.Errorf("session %q already exists", name)
-		}
+	// Check for duplicate name (sessions with no parent)
+	if isDuplicateName(ctx, name, "") {
+		return fmt.Errorf("session %q already exists", name)
 	}
 
 	id := fmt.Sprintf("sess_%d", time.Now().Unix())
@@ -132,10 +152,9 @@ func sessionBranch(ctx *repl.ShellContext, args []string) error {
 		baseURL = args[1]
 	}
 
-	for _, s := range ctx.Tree.Sessions {
-		if s.Name == name {
-			return fmt.Errorf("session %q already exists", name)
-		}
+	// Check for duplicate name with same parent
+	if isDuplicateName(ctx, name, current.ID) {
+		return fmt.Errorf("session %q already exists as child of %q", name, current.Name)
 	}
 
 	id := fmt.Sprintf("sess_%d", time.Now().Unix())
@@ -201,8 +220,16 @@ func sessionList(ctx *repl.ShellContext) error {
 			prefix = prefix + "└─ "
 		}
 
+		// Show session name with parent if it's a child
+		sessionDisplay := sess.Name
+		if sess.ParentID != "" {
+			if parent := ctx.Tree.Sessions[sess.ParentID]; parent != nil {
+				sessionDisplay = fmt.Sprintf("%s@%s", sess.Name, parent.Name)
+			}
+		}
+
 		fmt.Printf("%s%s%s %d requests %s\n",
-			prefix, marker, sess.Name, len(sess.Requests), sess.CreatedAt.Format("2006-01-02 15:04"))
+			prefix, marker, sessionDisplay, len(sess.Requests), sess.CreatedAt.Format("2006-01-02 15:04"))
 	}
 
 	// Find root sessions (no parent)
@@ -250,10 +277,10 @@ func sessionRename(ctx *repl.ShellContext, args []string) error {
 		return fmt.Errorf("session %q not found", oldName)
 	}
 
-	// Check if new name exists
+	// Check if new name exists with same parent
 	for _, s := range ctx.Tree.Sessions {
-		if s.Name == newName {
-			return fmt.Errorf("session %q already exists", newName)
+		if s.Name == newName && s.ParentID == target.ParentID {
+			return fmt.Errorf("session %q already exists with same parent", newName)
 		}
 	}
 
@@ -362,6 +389,22 @@ func sessionRequests(ctx *repl.ShellContext, args []string) error {
 		fmt.Printf("%-13s %-8s %s\n", req.ID, method, req.URL)
 	}
 
+	return nil
+}
+
+func sessionSetBase(ctx *repl.ShellContext, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: /session set-base <url>")
+	}
+
+	url := args[0]
+	session := ctx.Tree.Current()
+	if session == nil {
+		return fmt.Errorf("no current session")
+	}
+
+	session.BaseURL = url
+	repl.PrintSuccess(fmt.Sprintf("Set base URL to %q for session %q", url, session.Name))
 	return nil
 }
 
