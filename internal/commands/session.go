@@ -218,14 +218,6 @@ func sessionList(ctx *repl.ShellContext) error {
 			prefix = prefix + "└─ "
 		}
 
-		// Show session name with parent if it's a child (like prompt does)
-		sessionDisplay := sess.Name
-		if sess.ParentID != "" {
-			if parent := ctx.Tree.Sessions[sess.ParentID]; parent != nil {
-				sessionDisplay = fmt.Sprintf("%s@%s", sess.Name, parent.Name)
-			}
-		}
-
 		// Show auth indicator
 		authIndicator := ""
 		if sess.Auth != nil || ctx.Tree.GetInheritedAuth(sess.ID) != nil {
@@ -233,7 +225,7 @@ func sessionList(ctx *repl.ShellContext) error {
 		}
 
 		fmt.Printf("%s%s%s%s %d requests %s\n",
-			prefix, marker, sessionDisplay, authIndicator, len(sess.Requests), sess.CreatedAt.Format("2006-01-02 15:04"))
+			prefix, marker, sess.Name, authIndicator, len(sess.Requests), sess.CreatedAt.Format("2006-01-02 15:04"))
 	}
 
 	// Find root sessions (no parent)
