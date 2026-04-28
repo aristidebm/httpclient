@@ -314,13 +314,43 @@ func sessionDrop(ctx *repl.ShellContext, args []string) error {
 
 	name := args[0]
 
+	// Find session by name, prioritizing descendants of current session
 	var target *model.Session
 	var targetID string
+
+	current := ctx.Tree.Current()
+
+	// Collect all descendants of current session
+	descendants := make(map[string]bool)
+	if current != nil {
+		var collectDescendants func(sessionID string)
+		collectDescendants = func(sessionID string) {
+			children := ctx.Tree.Children(sessionID)
+			for _, child := range children {
+				descendants[child.ID] = true
+				collectDescendants(child.ID)
+			}
+		}
+		collectDescendants(current.ID)
+	}
+
+	// First, try to find in current session's hierarchy
 	for id, s := range ctx.Tree.Sessions {
-		if s.Name == name {
+		if s.Name == name && descendants[id] {
 			target = s
 			targetID = id
 			break
+		}
+	}
+
+	// If not found in hierarchy, fall back to any session with that name
+	if target == nil {
+		for id, s := range ctx.Tree.Sessions {
+			if s.Name == name {
+				target = s
+				targetID = id
+				break
+			}
 		}
 	}
 
