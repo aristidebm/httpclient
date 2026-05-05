@@ -3,6 +3,9 @@
 build:
 	go build -o build/http .
 
+install: build
+	cp ./build/http ~/go/bin/
+
 test:
 	go test ./...
 
@@ -12,7 +15,7 @@ lint:
 clean:
 	@rm -f build/http
 
-install:
+tidy:
 	@go mod tidy
 
 format:
