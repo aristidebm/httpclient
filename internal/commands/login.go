@@ -83,7 +83,7 @@ func loginBasic(ctx *repl.ShellContext, args []string) error {
 
 func loginToken(ctx *repl.ShellContext, args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("usage: /login token <token> [--header=X] [--type=Y]")
+		return fmt.Errorf("usage: /login token <token> [--header X] [--type Y]")
 	}
 
 	token := args[0]
@@ -91,12 +91,19 @@ func loginToken(ctx *repl.ShellContext, args []string) error {
 	tokenType := "Bearer"
 
 	// Parse flags
-	for _, arg := range args[1:] {
-		if strings.HasPrefix(arg, "--header=") {
+	for i := 1; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case strings.HasPrefix(arg, "--header="):
 			headerName = strings.TrimPrefix(arg, "--header=")
-		}
-		if strings.HasPrefix(arg, "--type=") {
+		case arg == "--header" && i+1 < len(args):
+			headerName = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--type="):
 			tokenType = strings.TrimPrefix(arg, "--type=")
+		case arg == "--type" && i+1 < len(args):
+			tokenType = args[i+1]
+			i++
 		}
 	}
 
