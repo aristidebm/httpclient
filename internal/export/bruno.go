@@ -61,20 +61,20 @@ func ExportBrunoDir(session *model.Session, tree *model.SessionTree, outDir stri
 	collectionJSON, _ := json.MarshalIndent(collection, "", "  ")
 	os.WriteFile(filepath.Join(sessionDir, "bruno.json"), collectionJSON, 0644)
 
-	// Create environments directory
-	envDir := filepath.Join(sessionDir, "environments")
-	os.MkdirAll(envDir, 0755)
+	// Create variables directory
+	varDir := filepath.Join(sessionDir, "variables")
+	os.MkdirAll(varDir, 0755)
 
-	// Create environment file using session data
-	var envContent strings.Builder
+	// Create variables file using session data
+	var varsContent strings.Builder
 	baseURL := tree.GetInheritedBaseURL(session.ID)
 	if baseURL != "" {
-		fmt.Fprintf(&envContent, "vars {\n  baseUrl: %s\n}\n", baseURL)
+		fmt.Fprintf(&varsContent, "vars {\n  baseUrl: %s\n}\n", baseURL)
 	}
 	for k, v := range tree.GetEffectiveVars(session.ID) {
-		fmt.Fprintf(&envContent, "vars {\n  %s: %v\n}\n", k, v.Value)
+		fmt.Fprintf(&varsContent, "vars {\n  %s: %v\n}\n", k, v.Value)
 	}
-	os.WriteFile(filepath.Join(envDir, session.Name+".bru"), []byte(envContent.String()), 0644)
+	os.WriteFile(filepath.Join(varDir, session.Name+".bru"), []byte(varsContent.String()), 0644)
 
 	// Create request files
 	for _, req := range session.Requests {

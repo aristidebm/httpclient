@@ -158,7 +158,7 @@ func (c *varsCmd) listVars(ctx *repl.ShellContext, filterScope string) error {
 		}
 	}
 
-	// Inherited env vars (from session tree)
+	// Inherited vars (from session tree)
 	session := ctx.Tree.Current()
 	if session != nil && (filterScope == "" || filterScope == "inherited") {
 		inheritedVars := ctx.Tree.GetEffectiveVars(session.ID)

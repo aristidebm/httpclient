@@ -8,7 +8,6 @@ import (
 )
 
 type Config struct {
-	DefaultEnv    string `yaml:"default_env"`
 	DefaultEditor string `yaml:"default_editor"`
 	HistoryFile   string `yaml:"history_file"`
 	Pager         string `yaml:"pager"`
@@ -24,7 +23,6 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			return &Config{
-				DefaultEnv:    "local",
 				DefaultEditor: "",
 				HistoryFile:   "~/.httpclient/history",
 				Pager:         "less",

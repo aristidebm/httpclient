@@ -107,12 +107,12 @@ func (c *helpCmd) Run(ctx *ShellContext, args []string) error {
 
 	// Group commands by category
 	groups := map[string][]string{
-		"HTTP Methods":    {"get", "post", "put", "patch", "delete", "request"},
-		"Import / Export": {"import", "export"},
-		"Session":         {"session", "routes"},
-		"Environment":     {"env", "vars", "login"},
-		"Utilities":       {"filter", "editor", "replay", "watch", "save", "logs"},
-		"System":          {"help", "exit"},
+		"HTTP Methods":     {"get", "post", "put", "patch", "delete", "request"},
+		"Import / Export":  {"import", "export"},
+		"Session":          {"session", "routes"},
+		"Variables / Auth": {"vars", "login"},
+		"Utilities":        {"filter", "editor", "replay", "watch", "save", "logs"},
+		"System":           {"help", "exit"},
 	}
 
 	fmt.Println("Available commands:")
