@@ -13,7 +13,7 @@
       devShells = forAllSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          go = pkgs.go_1_24; # ← change toolchain version here
+          go = pkgs.go_1_24;
         in
         {
           default = pkgs.mkShell {
@@ -21,18 +21,9 @@
               go
               pkgs.gopls
               pkgs.gotools
-              pkgs.delve        # debugger
+              pkgs.delve
               pkgs.golangci-lint
             ];
-
-            # ✅ Evaluated at shell entry time — $HOME is real here
-            shellHook = ''
-              export GOPATH="''${GOPATH:-$HOME/go}"
-              export GOROOT="${go}/share/go"
-              export PATH="$GOPATH/bin:$PATH"
-
-              echo "Go $(go version | cut -d' ' -f3) — GOPATH=$GOPATH"
-            '';
           };
         });
 
