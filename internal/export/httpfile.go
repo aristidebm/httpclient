@@ -10,21 +10,24 @@ type HTTPFileExporter struct{}
 
 func (e *HTTPFileExporter) Format() string { return "http" }
 
-func (e *HTTPFileExporter) Export(session *model.Session, env *model.Environment) ([]byte, error) {
+func (e *HTTPFileExporter) Export(session *model.Session, tree *model.SessionTree) ([]byte, error) {
 	var output strings.Builder
 
 	// Variable declarations at top
-	if env != nil {
+	baseURL := tree.GetInheritedBaseURL(session.ID)
+	if baseURL != "" {
 		output.WriteString("@baseUrl = ")
-		output.WriteString(env.BaseURL)
-		output.WriteString("\n")
-		if auth, ok := env.Headers["Authorization"]; ok {
-			output.WriteString("@token = ")
-			output.WriteString(auth)
-			output.WriteString("\n")
-		}
+		output.WriteString(baseURL)
 		output.WriteString("\n")
 	}
+
+	auth := tree.GetInheritedAuth(session.ID)
+	if auth != nil && auth.Type == "token" {
+		output.WriteString("@token = ")
+		output.WriteString(auth.TokenType + " " + auth.Token)
+		output.WriteString("\n")
+	}
+	output.WriteString("\n")
 
 	for i, req := range session.Requests {
 		if i > 0 {
@@ -39,8 +42,8 @@ func (e *HTTPFileExporter) Export(session *model.Session, env *model.Environment
 
 		// URL with variable substitution
 		url := req.URL
-		if env != nil && env.BaseURL != "" {
-			url = strings.ReplaceAll(url, env.BaseURL, "{{baseUrl}}")
+		if baseURL != "" {
+			url = strings.ReplaceAll(url, baseURL, "{{baseUrl}}")
 		}
 
 		output.WriteString(req.Method)
@@ -50,11 +53,9 @@ func (e *HTTPFileExporter) Export(session *model.Session, env *model.Environment
 
 		// Headers
 		for k, v := range req.Headers {
-			if env != nil {
-				auth, hasAuth := env.Headers["Authorization"]
-				if hasAuth && auth != "" {
-					v = strings.ReplaceAll(v, auth, "{{token}}")
-				}
+			if auth != nil && auth.Type == "token" {
+				tokenStr := auth.TokenType + " " + auth.Token
+				v = strings.ReplaceAll(v, tokenStr, "{{token}}")
 			}
 			output.WriteString(k)
 			output.WriteString(": ")

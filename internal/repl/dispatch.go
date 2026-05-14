@@ -105,36 +105,35 @@ func (c *helpCmd) Run(ctx *ShellContext, args []string) error {
 
 	cmds := ListCommands()
 
-	httpMethods := []string{"get", "post", "put", "patch", "delete", "request"}
-	ioCommands := []string{"import", "export"}
-	sessionCommands := []string{"session", "routes"}
-	envCommands := []string{"env", "vars"}
-	utilCommands := []string{"filter", "editor", "replay", "watch", "save"}
-	systemCommands := []string{"help", "exit"}
+	// Group commands by category
+	groups := map[string][]string{
+		"HTTP Methods":     {"get", "post", "put", "patch", "delete", "request"},
+		"Import / Export":  {"import", "export"},
+		"Session":          {"session", "routes"},
+		"Variables / Auth": {"vars", "login"},
+		"Utilities":        {"filter", "editor", "replay", "watch", "save", "logs"},
+		"System":           {"help", "exit"},
+	}
 
-	printGroup := func(title string, names []string) {
-		if len(names) == 0 {
-			return
-		}
-		fmt.Printf("\n%s:\n", title)
+	fmt.Println("Available commands:")
+	for groupName, cmdNames := range groups {
 		nameSet := make(map[string]bool)
-		for _, name := range names {
-			nameSet[name] = true
+		for _, n := range cmdNames {
+			nameSet[n] = true
 		}
+		var groupCmds []Command
 		for _, cmd := range cmds {
 			if nameSet[cmd.Name()] {
+				groupCmds = append(groupCmds, cmd)
+			}
+		}
+		if len(groupCmds) > 0 {
+			fmt.Printf("\n%s:\n", groupName)
+			for _, cmd := range groupCmds {
 				fmt.Printf("  /%-8s %s\n", cmd.Name(), cmd.Help())
 			}
 		}
 	}
-
-	fmt.Println("Available commands:")
-	printGroup("HTTP Methods", httpMethods)
-	printGroup("Import / Export", ioCommands)
-	printGroup("Session", sessionCommands)
-	printGroup("Environment", envCommands)
-	printGroup("Utilities", utilCommands)
-	printGroup("System", systemCommands)
 
 	return nil
 }
@@ -165,13 +164,11 @@ func (c *infoCmd) Help() string      { return "Show current shell state" }
 
 func (c *infoCmd) Run(ctx *ShellContext, args []string) error {
 	session := ctx.Tree.Current()
-	env := ctx.Tree.CurrentEnv()
 
 	fmt.Printf("SESSION  : %s\n", session.Name)
-	if env != nil {
-		fmt.Printf("ENV      : %s (%s)\n", env.Name, env.BaseURL)
-	} else {
-		fmt.Printf("ENV      : (none)\n")
+	baseURL := ctx.Tree.GetInheritedBaseURL(session.ID)
+	if baseURL != "" {
+		fmt.Printf("BASE URL : %s\n", baseURL)
 	}
 
 	if ctx.LastReqID != "" && ctx.LastResp != nil {

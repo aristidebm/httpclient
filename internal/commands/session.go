@@ -14,7 +14,7 @@ type sessionCmd struct{}
 func (c *sessionCmd) Name() string      { return "session" }
 func (c *sessionCmd) Aliases() []string { return nil }
 func (c *sessionCmd) Help() string {
-	return "Manage sessions: new, branch, switch, list, rename, drop, move, log"
+	return "Manage sessions: new, branch, switch, list, show, rename, drop, move"
 }
 
 func (c *sessionCmd) Run(ctx *repl.ShellContext, args []string) error {
@@ -38,18 +38,30 @@ func (c *sessionCmd) Run(ctx *repl.ShellContext, args []string) error {
 		return sessionDrop(ctx, args[1:])
 	case "move":
 		return sessionMove(ctx, args[1:])
-	case "requests", "log":
+	case "show":
+		return sessionShow(ctx, args[1:])
+	case "requests":
 		return sessionRequests(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown session subcommand: %s", subcmd)
 	}
 }
 
+// isDuplicateName checks if a session name already exists with the same parent
+func isDuplicateName(ctx *repl.ShellContext, name string, parentID string) bool {
+	for _, s := range ctx.Tree.Sessions {
+		if s.Name == name && s.ParentID == parentID {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *sessionCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	fields := strings.Fields(partial)
 
 	if len(fields) == 1 {
-		return []string{"new", "branch", "switch", "list", "rename", "drop", "move"}
+		return []string{"new", "branch", "switch", "list", "show", "rename", "drop", "move", "requests"}
 	}
 
 	subcmd := fields[0]
@@ -59,7 +71,7 @@ func (c *sessionCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 	}
 
 	switch subcmd {
-	case "switch", "rename", "drop", "move":
+	case "switch", "rename", "drop", "move", "show":
 		// Complete session names
 		var names []string
 		for _, s := range ctx.Tree.Sessions {
@@ -69,11 +81,11 @@ func (c *sessionCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 		}
 		return names
 	case "new", "branch":
-		// Complete environment names
+		// Complete session names (for branch, shows existing sessions as potential parents)
 		var names []string
-		for name := range ctx.Tree.Environments {
-			if strings.HasPrefix(name, lastArg) {
-				names = append(names, name)
+		for _, s := range ctx.Tree.Sessions {
+			if strings.HasPrefix(s.Name, lastArg) {
+				names = append(names, s.Name)
 			}
 		}
 		return names
@@ -83,45 +95,51 @@ func (c *sessionCmd) Complete(ctx *repl.ShellContext, partial string) []string {
 }
 
 func sessionNew(ctx *repl.ShellContext, args []string) error {
-	if len(args) < 2 {
-		return fmt.Errorf("usage: /session new <name> <env>")
+	if len(args) < 1 {
+		return fmt.Errorf("usage: /session new <name> [base-url]")
 	}
 
 	name := args[0]
-	envName := args[1]
-
-	if _, ok := ctx.Tree.Environments[envName]; !ok {
-		return fmt.Errorf("environment %q does not exist", envName)
+	baseURL := ""
+	if len(args) >= 2 {
+		baseURL = args[1]
 	}
 
-	for _, s := range ctx.Tree.Sessions {
-		if s.Name == name {
-			return fmt.Errorf("session %q already exists", name)
-		}
+	// Check for duplicate name (sessions with no parent)
+	if isDuplicateName(ctx, name, "") {
+		return fmt.Errorf("session %q already exists", name)
 	}
 
 	id := fmt.Sprintf("sess_%d", time.Now().Unix())
 	sess := &model.Session{
-		ID:              id,
-		Name:            name,
-		EnvName:         envName,
-		ParentID:        "",
-		Requests:        []*model.Request{},
-		HeaderOverrides: make(map[string]string),
-		Vars:            make(model.Variables),
-		CreatedAt:       time.Now(),
+		ID:        id,
+		Name:      name,
+		ParentID:  "",
+		Requests:  []*model.Request{},
+		Headers:   make(map[string]string),
+		Vars:      make(model.Variables),
+		CreatedAt: time.Now(),
+	}
+
+	// Set baseURL in vars if provided
+	if baseURL != "" {
+		sess.Vars.Set("baseURL", baseURL, model.VarScopeSession)
 	}
 
 	ctx.Tree.Sessions[id] = sess
 	ctx.Tree.CurrentID = id
 
-	repl.PrintSuccess(fmt.Sprintf("Created session %q bound to environment %q", name, envName))
+	if baseURL != "" {
+		repl.PrintSuccess(fmt.Sprintf("Created session %q with base URL %q", name, baseURL))
+	} else {
+		repl.PrintSuccess(fmt.Sprintf("Created session %q", name))
+	}
 	return nil
 }
 
 func sessionBranch(ctx *repl.ShellContext, args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("usage: /session branch <name> [env]")
+		return fmt.Errorf("usage: /session branch <name> [base-url]")
 	}
 
 	name := args[0]
@@ -131,35 +149,41 @@ func sessionBranch(ctx *repl.ShellContext, args []string) error {
 		return fmt.Errorf("no current session")
 	}
 
-	envName := current.EnvName
-	if len(args) >= 2 {
-		envName = args[1]
-	}
-
-	if _, ok := ctx.Tree.Environments[envName]; !ok {
-		return fmt.Errorf("environment %q does not exist", envName)
-	}
-
-	for _, s := range ctx.Tree.Sessions {
-		if s.Name == name {
-			return fmt.Errorf("session %q already exists", name)
+	// Get baseURL from current session's vars or use provided one
+	baseURL := ""
+	if v, ok := current.Vars["baseURL"]; ok && v.Value != nil {
+		if s, ok := v.Value.(string); ok {
+			baseURL = s
 		}
+	}
+	if len(args) >= 2 {
+		baseURL = args[1]
+	}
+
+	// Check for duplicate name with same parent
+	if isDuplicateName(ctx, name, current.ID) {
+		return fmt.Errorf("session %q already exists as child of %q", name, current.Name)
 	}
 
 	id := fmt.Sprintf("sess_%d", time.Now().Unix())
 	sess := &model.Session{
-		ID:              id,
-		Name:            name,
-		EnvName:         envName,
-		ParentID:        current.ID,
-		Requests:        []*model.Request{},
-		HeaderOverrides: make(map[string]string),
-		Vars:            make(model.Variables),
-		OpenAPISpec:     current.OpenAPISpec, // Inherit OpenAPI spec from parent
-		CreatedAt:       time.Now(),
+		ID:          id,
+		Name:        name,
+		ParentID:    current.ID,
+		Requests:    []*model.Request{},
+		Headers:     make(map[string]string),
+		Vars:        make(model.Variables),
+		OpenAPISpec: current.OpenAPISpec, // Inherit OpenAPI spec from parent
+		CreatedAt:   time.Now(),
+	}
+
+	// Set baseURL in vars if provided
+	if baseURL != "" {
+		sess.Vars.Set("baseURL", baseURL, model.VarScopeSession)
 	}
 
 	ctx.Tree.Sessions[id] = sess
+	ctx.Tree.PreviousID = ctx.Tree.CurrentID
 	ctx.Tree.CurrentID = id
 
 	repl.PrintSuccess(fmt.Sprintf("Branched to new session %q (child of %q)", name, current.Name))
@@ -199,12 +223,6 @@ func sessionSwitch(ctx *repl.ShellContext, args []string) error {
 
 func sessionList(ctx *repl.ShellContext) error {
 	printSession := func(sess *model.Session, indent int) {
-		env := ctx.Tree.Environments[sess.EnvName]
-		envName := sess.EnvName
-		if env != nil && env.BaseURL != "" {
-			envName = fmt.Sprintf("%s (%s)", sess.EnvName, env.BaseURL)
-		}
-
 		marker := " "
 		if sess.ID == ctx.Tree.CurrentID {
 			marker = "←"
@@ -215,8 +233,14 @@ func sessionList(ctx *repl.ShellContext) error {
 			prefix = prefix + "└─ "
 		}
 
-		fmt.Printf("%s%s%-15s [%s] %d requests %s %s\n",
-			prefix, marker, sess.Name, envName, len(sess.Requests), marker, sess.CreatedAt.Format("2006-01-02 15:04"))
+		// Show auth indicator
+		authIndicator := ""
+		if sess.Auth != nil || ctx.Tree.GetInheritedAuth(sess.ID) != nil {
+			authIndicator = " [A]"
+		}
+
+		fmt.Printf("%s%s%s%s %d requests %s\n",
+			prefix, marker, sess.Name, authIndicator, len(sess.Requests), sess.CreatedAt.Format("2006-01-02 15:04"))
 	}
 
 	// Find root sessions (no parent)
@@ -264,10 +288,10 @@ func sessionRename(ctx *repl.ShellContext, args []string) error {
 		return fmt.Errorf("session %q not found", oldName)
 	}
 
-	// Check if new name exists
+	// Check if new name exists with same parent
 	for _, s := range ctx.Tree.Sessions {
-		if s.Name == newName {
-			return fmt.Errorf("session %q already exists", newName)
+		if s.Name == newName && s.ParentID == target.ParentID {
+			return fmt.Errorf("session %q already exists with same parent", newName)
 		}
 	}
 
@@ -289,34 +313,76 @@ func sessionDrop(ctx *repl.ShellContext, args []string) error {
 	}
 
 	name := args[0]
+	current := ctx.Tree.Current()
+	currentID := ctx.Tree.CurrentID
 
+	// Collect all descendants of current session
+	descendants := make(map[string]bool)
+	if current != nil {
+		var collectDescendants func(sessionID string)
+		collectDescendants = func(sessionID string) {
+			children := ctx.Tree.Children(sessionID)
+			for _, child := range children {
+				descendants[child.ID] = true
+				collectDescendants(child.ID)
+			}
+		}
+		collectDescendants(currentID)
+	}
+
+	// First, find in current session's hierarchy (descendants)
 	var target *model.Session
 	var targetID string
 	for id, s := range ctx.Tree.Sessions {
-		if s.Name == name {
+		if s.Name == name && descendants[id] {
 			target = s
 			targetID = id
 			break
 		}
 	}
 
+	// If not found in hierarchy, try top-level sessions (no parent)
 	if target == nil {
-		return fmt.Errorf("session %q not found", name)
+		for id, s := range ctx.Tree.Sessions {
+			if s.Name == name && s.ParentID == "" {
+				target = s
+				targetID = id
+				break
+			}
+		}
 	}
 
-	// Check for children
-	children := ctx.Tree.Children(targetID)
-	if len(children) > 0 {
-		return fmt.Errorf("refuse to drop session %q: it has %d child session(s)", name, len(children))
+	if target == nil {
+		return fmt.Errorf("session %q not found (only descendants or top-level sessions can be dropped)", name)
 	}
 
-	// Can't drop current session without switching
-	if targetID == ctx.Tree.CurrentID {
+	// Can't drop current session
+	if targetID == currentID {
 		return fmt.Errorf("cannot drop current session; switch to another first")
 	}
 
-	delete(ctx.Tree.Sessions, targetID)
-	repl.PrintSuccess(fmt.Sprintf("Dropped session %q", name))
+	// Collect all descendants of target to delete them too
+	toDelete := []string{targetID}
+	var collectAllDescendants func(sessionID string)
+	collectAllDescendants = func(sessionID string) {
+		children := ctx.Tree.Children(sessionID)
+		for _, child := range children {
+			toDelete = append(toDelete, child.ID)
+			collectAllDescendants(child.ID)
+		}
+	}
+	collectAllDescendants(targetID)
+
+	// Delete all (duplicates removed by map)
+	deleted := make(map[string]bool)
+	for _, id := range toDelete {
+		if !deleted[id] {
+			delete(ctx.Tree.Sessions, id)
+			deleted[id] = true
+		}
+	}
+
+	repl.PrintSuccess(fmt.Sprintf("Dropped session %q and %d descendant(s)", name, len(deleted)-1))
 	return nil
 }
 
@@ -368,14 +434,59 @@ func sessionRequests(ctx *repl.ShellContext, args []string) error {
 		return nil
 	}
 
-	fmt.Println("ID            METHOD   URL")
-	fmt.Println("───────────────────────────────────────────────────────────────")
 	for _, req := range session.Requests {
 		method := req.Method
 		if req.Response != nil {
 			method = fmt.Sprintf("%s %d", method, req.Response.StatusCode)
 		}
 		fmt.Printf("%-13s %-8s %s\n", req.ID, method, req.URL)
+	}
+
+	return nil
+}
+
+func sessionShow(ctx *repl.ShellContext, args []string) error {
+	name := ""
+	if len(args) >= 1 {
+		name = args[0]
+	} else {
+		session := ctx.Tree.Current()
+		if session == nil {
+			return fmt.Errorf("no current session")
+		}
+		name = session.Name
+	}
+
+	var target *model.Session
+	for _, s := range ctx.Tree.Sessions {
+		if s.Name == name {
+			target = s
+			break
+		}
+	}
+
+	if target == nil {
+		return fmt.Errorf("session %q not found", name)
+	}
+
+	fmt.Printf("Name: %s\n", target.Name)
+
+	// Show baseURL and authURL from vars
+	if v, ok := target.Vars["baseURL"]; ok && v.Value != nil {
+		fmt.Printf("BaseURL: %v\n", v.Value)
+	}
+	if v, ok := target.Vars["authURL"]; ok && v.Value != nil {
+		fmt.Printf("AuthURL: %v\n", v.Value)
+	}
+
+	fmt.Printf("Requests: %d\n", len(target.Requests))
+	fmt.Printf("Headers: %d\n", len(target.Headers))
+	fmt.Printf("Created: %s\n", target.CreatedAt.Format("2006-01-02 15:04:05"))
+	if target.OpenAPISpec != nil {
+		fmt.Printf("OpenAPI: %s (v%s)\n", target.OpenAPISpec.Title, target.OpenAPISpec.Version)
+	}
+	if target.Auth != nil {
+		fmt.Printf("Auth: %s\n", target.Auth.Type)
 	}
 
 	return nil

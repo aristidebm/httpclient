@@ -1,19 +1,25 @@
-.PHONY: build test lint clean format
+.PHONY: build test lint clean format install
 
 build:
 	go build -o build/http .
+
+install: build
+	cp ./build/http ~/go/bin/
 
 test:
 	go test ./...
 
 lint:
-	go vet ./...
+	@go vet ./...
 
 clean:
-	rm -f build/http 
+	@rm -f build/http
 
 tidy:
-	go mod tidy
+	@go mod tidy
 
 format:
-	go fmt ./...
+	@go fmt ./...
+
+run:
+	@go run ./...

@@ -7,33 +7,34 @@ import (
 )
 
 func TestJSONExporter(t *testing.T) {
-	env := &model.Environment{
-		Name:    "test",
-		BaseURL: "https://api.example.com",
-		Headers: map[string]string{"Authorization": "Bearer token"},
-		Vars:    model.Variables{"api_key": {Name: "api_key", Value: "secret"}},
-	}
-
-	session := &model.Session{
-		Name:    "test-session",
-		EnvName: "test",
-		Requests: []*model.Request{
-			{
-				ID:     "r1",
-				Method: "GET",
-				URL:    "https://api.example.com/users",
-				Response: &model.Response{
-					StatusCode: 200,
-					Status:     "OK",
-					Body:       []byte(`{"users":[]}`),
-					RawBody:    []byte(`{"users":[]}`),
+	tree := &model.SessionTree{
+		Sessions: map[string]*model.Session{
+			"test": {
+				Name:    "test-session",
+				Headers: map[string]string{"Authorization": "Bearer token"},
+				Vars:    model.Variables{"baseURL": {Name: "baseURL", Value: "https://api.example.com", Scope: model.VarScopeSession, Public: true}, "api_key": {Name: "api_key", Value: "secret", Scope: model.VarScopeSession, Public: true}},
+				Requests: []*model.Request{
+					{
+						ID:     "r1",
+						Method: "GET",
+						URL:    "https://api.example.com/users",
+						Response: &model.Response{
+							StatusCode: 200,
+							Status:     "OK",
+							Body:       []byte(`{"users":[]}`),
+							RawBody:    []byte(`{"users":[]}`),
+						},
+					},
 				},
 			},
 		},
+		CurrentID: "test",
 	}
 
+	session := tree.Sessions["test"]
+
 	exp := &JSONExporter{}
-	data, err := exp.Export(session, env)
+	data, err := exp.Export(session, tree)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -44,34 +45,35 @@ func TestJSONExporter(t *testing.T) {
 }
 
 func TestCurlExporter(t *testing.T) {
-	env := &model.Environment{
-		Name:    "test",
-		BaseURL: "https://api.example.com",
-		Headers: map[string]string{"Authorization": "Bearer token"},
-		Vars:    model.Variables{},
-	}
-
-	session := &model.Session{
-		Name:    "test-session",
-		EnvName: "test",
-		Requests: []*model.Request{
-			{
-				ID:      "r1",
-				Method:  "GET",
-				URL:     "https://api.example.com/users",
-				Headers: map[string]string{"Accept": "application/json"},
-				Response: &model.Response{
-					StatusCode: 200,
-					Status:     "OK",
-					Body:       []byte(`{"users":[]}`),
-					RawBody:    []byte(`{"users":[]}`),
+	tree := &model.SessionTree{
+		Sessions: map[string]*model.Session{
+			"test": {
+				Name:    "test-session",
+				Headers: map[string]string{"Authorization": "Bearer token"},
+				Vars:    model.Variables{"baseURL": {Name: "baseURL", Value: "https://api.example.com", Scope: model.VarScopeSession, Public: true}},
+				Requests: []*model.Request{
+					{
+						ID:      "r1",
+						Method:  "GET",
+						URL:     "https://api.example.com/users",
+						Headers: map[string]string{"Accept": "application/json"},
+						Response: &model.Response{
+							StatusCode: 200,
+							Status:     "OK",
+							Body:       []byte(`{"users":[]}`),
+							RawBody:    []byte(`{"users":[]}`),
+						},
+					},
 				},
 			},
 		},
+		CurrentID: "test",
 	}
 
+	session := tree.Sessions["test"]
+
 	exp := &CurlExporter{}
-	data, err := exp.Export(session, env)
+	data, err := exp.Export(session, tree)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -83,28 +85,29 @@ func TestCurlExporter(t *testing.T) {
 }
 
 func TestHTTPFileExporter(t *testing.T) {
-	env := &model.Environment{
-		Name:    "test",
-		BaseURL: "https://api.example.com",
-		Headers: map[string]string{"Authorization": "Bearer token"},
-		Vars:    model.Variables{},
-	}
-
-	session := &model.Session{
-		Name:    "test-session",
-		EnvName: "test",
-		Requests: []*model.Request{
-			{
-				ID:      "r1",
-				Method:  "GET",
-				URL:     "/users",
-				Headers: map[string]string{"Accept": "application/json"},
+	tree := &model.SessionTree{
+		Sessions: map[string]*model.Session{
+			"test": {
+				Name:    "test-session",
+				Headers: map[string]string{"Authorization": "Bearer token"},
+				Vars:    model.Variables{"baseURL": {Name: "baseURL", Value: "https://api.example.com", Scope: model.VarScopeSession, Public: true}},
+				Requests: []*model.Request{
+					{
+						ID:      "r1",
+						Method:  "GET",
+						URL:     "/users",
+						Headers: map[string]string{"Accept": "application/json"},
+					},
+				},
 			},
 		},
+		CurrentID: "test",
 	}
 
+	session := tree.Sessions["test"]
+
 	exp := &HTTPFileExporter{}
-	data, err := exp.Export(session, env)
+	data, err := exp.Export(session, tree)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

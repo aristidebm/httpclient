@@ -44,19 +44,19 @@ func NewClient(timeout time.Duration) *Client {
 	}
 }
 
-func (c *Client) Execute(req *model.Request, env *model.Environment) error {
-	mergedHeaders := make(map[string]string)
-	for k, v := range env.Headers {
-		mergedHeaders[k] = v
-	}
+func (c *Client) Execute(req *model.Request, session *model.Session, tree *model.SessionTree) error {
+	// Get effective headers (session + inherited)
+	mergedHeaders := tree.GetEffectiveHeaders(session.ID)
+	// Request headers override session/ancestor headers
 	for k, v := range req.Headers {
 		mergedHeaders[k] = v
 	}
 
 	fullURL := req.URL
 	if !strings.HasPrefix(req.URL, "http://") && !strings.HasPrefix(req.URL, "https://") {
-		if env.BaseURL != "" {
-			baseURL := strings.TrimRight(env.BaseURL, "/")
+		baseURL := tree.GetInheritedBaseURL(session.ID)
+		if baseURL != "" {
+			baseURL = strings.TrimRight(baseURL, "/")
 			if strings.HasPrefix(req.URL, "/") {
 				fullURL = baseURL + req.URL
 			} else {
@@ -73,12 +73,11 @@ func (c *Client) Execute(req *model.Request, env *model.Environment) error {
 		}
 	}
 
-	// Convert env.Vars to map[string]any
+	// Get effective vars (session + inherited)
+	effectiveVars := tree.GetEffectiveVars(session.ID)
 	envVars := make(map[string]any)
-	if env.Vars != nil {
-		for k, v := range env.Vars {
-			envVars[k] = v.Value
-		}
+	for k, v := range effectiveVars {
+		envVars[k] = v.Value
 	}
 
 	varLayers := []map[string]any{
@@ -111,7 +110,7 @@ func (c *Client) Execute(req *model.Request, env *model.Environment) error {
 		httpReq.Header.Set("Content-Type", req.ContentType)
 	}
 
-	ApplyAuth(httpReq, env)
+	ApplyAuth(httpReq, session, tree)
 
 	if len(req.Params) > 0 {
 		q := httpReq.URL.Query()

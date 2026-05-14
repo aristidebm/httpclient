@@ -20,7 +20,7 @@ func (c *routesCmd) Help() string      { return "List routes from loaded OpenAPI
 func (c *routesCmd) Run(ctx *repl.ShellContext, args []string) error {
 	spec := ctx.CurrentSpec()
 	if spec == nil {
-		fmt.Println("No spec loaded. Use /load <url-or-file>")
+		fmt.Println("No spec loaded. Use /import <url-or-file>")
 		return nil
 	}
 

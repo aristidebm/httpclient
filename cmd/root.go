@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	_ "httpclient/internal/commands"
 	"httpclient/internal/input"
@@ -84,10 +83,10 @@ func runSessions(cmd *cobra.Command, args []string) {
 	ctx := repl.NewShellContext()
 
 	printSession := func(sess *model.Session, indent int) {
-		env := ctx.Tree.Environments[sess.EnvName]
-		envName := sess.EnvName
-		if env != nil && env.BaseURL != "" {
-			envName = fmt.Sprintf("%s (%s)", sess.EnvName, env.BaseURL)
+		baseURL := ctx.Tree.GetInheritedBaseURL(sess.ID)
+		sessionInfo := sess.Name
+		if baseURL != "" {
+			sessionInfo = fmt.Sprintf("%s (%s)", sess.Name, baseURL)
 		}
 
 		marker := " "
@@ -100,8 +99,8 @@ func runSessions(cmd *cobra.Command, args []string) {
 			prefix = prefix + "└─ "
 		}
 
-		fmt.Printf("%s%s%-15s [%s] %d requests %s %s\n",
-			prefix, marker, sess.Name, envName, len(sess.Requests), marker, sess.CreatedAt.Format("2006-01-02 15:04"))
+		fmt.Printf("%s%s%-15s %d requests %s %s\n",
+			prefix, marker, sessionInfo, len(sess.Requests), marker, sess.CreatedAt.Format("2006-01-02 15:04"))
 	}
 
 	var roots []*model.Session
@@ -134,33 +133,7 @@ func switchToSession(ctx *repl.ShellContext, name string) error {
 		}
 	}
 
-	envName := "default"
-	if len(ctx.Tree.Environments) == 0 {
-		ctx.Tree.Environments[envName] = &model.Environment{
-			Name:    envName,
-			BaseURL: "",
-			Vars:    make(model.Variables),
-			Headers: make(map[string]string),
-		}
-	}
-
-	id := fmt.Sprintf("sess_%d", time.Now().Unix())
-	sess := &model.Session{
-		ID:              id,
-		Name:            name,
-		EnvName:         envName,
-		ParentID:        "",
-		Requests:        []*model.Request{},
-		HeaderOverrides: make(map[string]string),
-		Vars:            make(model.Variables),
-		CreatedAt:       time.Now(),
-	}
-
-	ctx.Tree.Sessions[id] = sess
-	ctx.Tree.CurrentID = id
-
-	fmt.Printf("Created new session %q\n", name)
-	return nil
+	return fmt.Errorf("session %q not found", name)
 }
 
 func importPath(ctx *repl.ShellContext, target string) error {

@@ -11,7 +11,7 @@ type HARExporter struct{}
 
 func (e *HARExporter) Format() string { return "har" }
 
-func (e *HARExporter) Export(session *model.Session, env *model.Environment) ([]byte, error) {
+func (e *HARExporter) Export(session *model.Session, tree *model.SessionTree) ([]byte, error) {
 	entries := make([]map[string]any, 0)
 
 	for _, req := range session.Requests {

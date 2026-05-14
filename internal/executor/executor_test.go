@@ -11,12 +11,20 @@ import (
 func TestClientExecuteSuccess(t *testing.T) {
 	client := NewClient(10 * time.Second)
 
-	env := &model.Environment{
-		Name:    "test",
-		BaseURL: "https://httpbin.org",
-		Headers: map[string]string{},
-		Vars:    model.Variables{},
+	tree := &model.SessionTree{
+		Sessions: map[string]*model.Session{
+			"test": {
+				ID:       "test",
+				Name:     "test",
+				Requests: []*model.Request{},
+				Headers:  make(map[string]string),
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://httpbin.org", Scope: model.VarScopeSession, Public: true}},
+			},
+		},
+		CurrentID: "test",
 	}
+
+	session := tree.Sessions["test"]
 
 	req := &model.Request{
 		Method: "GET",
@@ -27,7 +35,7 @@ func TestClientExecuteSuccess(t *testing.T) {
 		Vars: model.Variables{},
 	}
 
-	err := client.Execute(req, env)
+	err := client.Execute(req, session, tree)
 	if err != nil {
 		t.Fatalf("Execute failed: %v", err)
 	}
@@ -49,12 +57,20 @@ func TestClientExecuteSuccess(t *testing.T) {
 func TestClientTimeout(t *testing.T) {
 	client := NewClient(1 * time.Millisecond)
 
-	env := &model.Environment{
-		Name:    "test",
-		BaseURL: "https://httpbin.org",
-		Headers: map[string]string{},
-		Vars:    model.Variables{},
+	tree := &model.SessionTree{
+		Sessions: map[string]*model.Session{
+			"test": {
+				ID:       "test",
+				Name:     "test",
+				Requests: []*model.Request{},
+				Headers:  make(map[string]string),
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://httpbin.org", Scope: model.VarScopeSession, Public: true}},
+			},
+		},
+		CurrentID: "test",
 	}
+
+	session := tree.Sessions["test"]
 
 	req := &model.Request{
 		Method: "GET",
@@ -62,7 +78,7 @@ func TestClientTimeout(t *testing.T) {
 		Vars:   model.Variables{},
 	}
 
-	err := client.Execute(req, env)
+	err := client.Execute(req, session, tree)
 	if err == nil {
 		t.Fatal("expected error for timeout")
 	}
@@ -79,14 +95,20 @@ func TestClientTimeout(t *testing.T) {
 func TestHeaderMerging(t *testing.T) {
 	client := NewClient(10 * time.Second)
 
-	env := &model.Environment{
-		Name:    "test",
-		BaseURL: "https://httpbin.org",
-		Headers: map[string]string{
-			"X-Foo": "env",
+	tree := &model.SessionTree{
+		Sessions: map[string]*model.Session{
+			"test": {
+				ID:       "test",
+				Name:     "test",
+				Requests: []*model.Request{},
+				Headers:  map[string]string{"X-Foo": "env"},
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://httpbin.org", Scope: model.VarScopeSession, Public: true}},
+			},
 		},
-		Vars: model.Variables{},
+		CurrentID: "test",
 	}
+
+	session := tree.Sessions["test"]
 
 	req := &model.Request{
 		Method: "GET",
@@ -97,7 +119,7 @@ func TestHeaderMerging(t *testing.T) {
 		Vars: model.Variables{},
 	}
 
-	err := client.Execute(req, env)
+	err := client.Execute(req, session, tree)
 	if err != nil {
 		t.Fatalf("Execute failed: %v", err)
 	}
@@ -110,12 +132,20 @@ func TestHeaderMerging(t *testing.T) {
 func TestURLResolution(t *testing.T) {
 	client := NewClient(10 * time.Second)
 
-	env := &model.Environment{
-		Name:    "test",
-		BaseURL: "https://httpbin.org",
-		Headers: map[string]string{},
-		Vars:    model.Variables{},
+	tree := &model.SessionTree{
+		Sessions: map[string]*model.Session{
+			"test": {
+				ID:       "test",
+				Name:     "test",
+				Requests: []*model.Request{},
+				Headers:  make(map[string]string),
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://httpbin.org", Scope: model.VarScopeSession, Public: true}},
+			},
+		},
+		CurrentID: "test",
 	}
+
+	session := tree.Sessions["test"]
 
 	req := &model.Request{
 		Method: "GET",
@@ -125,7 +155,7 @@ func TestURLResolution(t *testing.T) {
 		},
 	}
 
-	err := client.Execute(req, env)
+	err := client.Execute(req, session, tree)
 	if err != nil {
 		t.Fatalf("Execute failed: %v", err)
 	}
@@ -138,12 +168,20 @@ func TestURLResolution(t *testing.T) {
 func TestNon2xxResponse(t *testing.T) {
 	client := NewClient(10 * time.Second)
 
-	env := &model.Environment{
-		Name:    "test",
-		BaseURL: "https://httpbin.org",
-		Headers: map[string]string{},
-		Vars:    model.Variables{},
+	tree := &model.SessionTree{
+		Sessions: map[string]*model.Session{
+			"test": {
+				ID:       "test",
+				Name:     "test",
+				Requests: []*model.Request{},
+				Headers:  make(map[string]string),
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://httpbin.org", Scope: model.VarScopeSession, Public: true}},
+			},
+		},
+		CurrentID: "test",
 	}
+
+	session := tree.Sessions["test"]
 
 	req := &model.Request{
 		Method: "GET",
@@ -151,7 +189,7 @@ func TestNon2xxResponse(t *testing.T) {
 		Vars:   model.Variables{},
 	}
 
-	err := client.Execute(req, env)
+	err := client.Execute(req, session, tree)
 	if err != nil {
 		t.Fatalf("expected no error for non-2xx, got %v", err)
 	}
@@ -162,17 +200,28 @@ func TestNon2xxResponse(t *testing.T) {
 }
 
 func TestApplyAuth(t *testing.T) {
-	env := &model.Environment{
-		Name:    "test",
-		BaseURL: "https://api.example.com",
-		Headers: map[string]string{
-			"Authorization": "my-token",
+	tree := &model.SessionTree{
+		Sessions: map[string]*model.Session{
+			"test": {
+				ID:       "test",
+				Name:     "test",
+				Requests: []*model.Request{},
+				Headers:  make(map[string]string),
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://api.example.com", Scope: model.VarScopeSession, Public: true}},
+				Auth: &model.AuthConfig{
+					Type:      "token",
+					Token:     "my-token",
+					TokenType: "TOKEN",
+				},
+			},
 		},
-		Vars: model.Variables{},
+		CurrentID: "test",
 	}
 
+	session := tree.Sessions["test"]
+
 	req, _ := http.NewRequest("GET", "https://api.example.com/test", nil)
-	ApplyAuth(req, env)
+	ApplyAuth(req, session, tree)
 
 	auth := req.Header.Get("Authorization")
 	if auth != "TOKEN my-token" {
@@ -181,17 +230,28 @@ func TestApplyAuth(t *testing.T) {
 }
 
 func TestApplyAuthWithTokenPrefix(t *testing.T) {
-	env := &model.Environment{
-		Name:    "test",
-		BaseURL: "https://api.example.com",
-		Headers: map[string]string{
-			"Authorization": "TOKEN my-token",
+	tree := &model.SessionTree{
+		Sessions: map[string]*model.Session{
+			"test": {
+				ID:       "test",
+				Name:     "test",
+				Requests: []*model.Request{},
+				Headers:  make(map[string]string),
+				Vars:     model.Variables{"baseURL": {Name: "baseURL", Value: "https://api.example.com", Scope: model.VarScopeSession, Public: true}},
+				Auth: &model.AuthConfig{
+					Type:      "token",
+					Token:     "my-token",
+					TokenType: "TOKEN",
+				},
+			},
 		},
-		Vars: model.Variables{},
+		CurrentID: "test",
 	}
 
+	session := tree.Sessions["test"]
+
 	req, _ := http.NewRequest("GET", "https://api.example.com/test", nil)
-	ApplyAuth(req, env)
+	ApplyAuth(req, session, tree)
 
 	auth := req.Header.Get("Authorization")
 	if auth != "TOKEN my-token" {

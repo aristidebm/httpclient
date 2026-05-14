@@ -10,7 +10,7 @@ type CurlExporter struct{}
 
 func (e *CurlExporter) Format() string { return "curl" }
 
-func (e *CurlExporter) Export(session *model.Session, env *model.Environment) ([]byte, error) {
+func (e *CurlExporter) Export(session *model.Session, tree *model.SessionTree) ([]byte, error) {
 	var output strings.Builder
 
 	for _, req := range session.Requests {
@@ -38,24 +38,51 @@ func (e *CurlExporter) Export(session *model.Session, env *model.Environment) ([
 
 		// URL - expand base URL
 		url := req.URL
-		if env != nil && !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-			url = strings.TrimRight(env.BaseURL, "/") + "/" + strings.TrimLeft(url, "/")
+		baseURL := tree.GetInheritedBaseURL(session.ID)
+		if baseURL != "" && !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+			url = strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(url, "/")
 		}
 		output.WriteString(" '")
 		output.WriteString(url)
 		output.WriteString("'")
 
-		// Headers
-		if env != nil {
-			for k, v := range env.Headers {
-				output.WriteString(" \\\n  -H '")
-				output.WriteString(k)
-				output.WriteString(": ")
-				output.WriteString(v)
+		// Auth from session
+		if session.Auth != nil {
+			switch session.Auth.Type {
+			case "basic":
+				output.WriteString(" \\\n  -u '")
+				output.WriteString(session.Auth.Username)
+				output.WriteString(":")
+				output.WriteString(session.Auth.Password)
 				output.WriteString("'")
+			case "token":
+				tokenType := session.Auth.TokenType
+				if tokenType == "" {
+					tokenType = "Bearer"
+				}
+				headerName := session.Auth.HeaderName
+				if headerName == "" {
+					headerName = "Authorization"
+				}
+				output.WriteString(" \\\n  -H '")
+				output.WriteString(headerName)
+				output.WriteString(": ")
+				output.WriteString(tokenType)
+				output.WriteString(" ")
+				output.WriteString(session.Auth.Token)
+				output.WriteString("'")
+			case "oauth":
+				if session.Auth.AccessToken != "" {
+					output.WriteString(" \\\n  -H 'Authorization: Bearer ")
+					output.WriteString(session.Auth.AccessToken)
+					output.WriteString("'")
+				}
 			}
 		}
-		for k, v := range req.Headers {
+
+		// Headers from session
+		headers := tree.GetEffectiveHeaders(session.ID)
+		for k, v := range headers {
 			output.WriteString(" \\\n  -H '")
 			output.WriteString(k)
 			output.WriteString(": ")

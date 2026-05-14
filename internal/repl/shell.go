@@ -92,10 +92,7 @@ func ExpandPath(path string) (string, error) {
 }
 
 func (ctx *ShellContext) Save() error {
-	if err := session.SaveTree(ctx.Tree); err != nil {
-		return err
-	}
-	return session.SaveEnvironments(ctx.Tree.Environments)
+	return session.SaveTree(ctx.Tree)
 }
 
 func (ctx *ShellContext) Run() error {

@@ -3,50 +3,31 @@ package model
 import "time"
 
 type SessionTree struct {
-	Sessions     map[string]*Session
-	CurrentID    string
-	PreviousID   string
-	Environments map[string]*Environment
+	Sessions   map[string]*Session
+	CurrentID  string
+	PreviousID string
 }
 
 func NewSessionTree() *SessionTree {
-	env := &Environment{
-		Name:    "local",
-		BaseURL: "",
-		Headers: make(map[string]string),
-		Vars:    make(Variables),
-	}
 	sess := &Session{
-		ID:              "default",
-		Name:            "default",
-		EnvName:         "local",
-		ParentID:        "",
-		Requests:        make([]*Request, 0),
-		HeaderOverrides: make(map[string]string),
-		Vars:            make(Variables),
-		CreatedAt:       time.Now(),
+		ID:        "default",
+		Name:      "default",
+		ParentID:  "",
+		Requests:  make([]*Request, 0),
+		Headers:   make(map[string]string),
+		Vars:      make(Variables),
+		CreatedAt: time.Now(),
 	}
 	return &SessionTree{
 		Sessions: map[string]*Session{
 			"default": sess,
 		},
 		CurrentID: "default",
-		Environments: map[string]*Environment{
-			"local": env,
-		},
 	}
 }
 
 func (t *SessionTree) Current() *Session {
 	return t.Sessions[t.CurrentID]
-}
-
-func (t *SessionTree) CurrentEnv() *Environment {
-	sess := t.Current()
-	if sess == nil {
-		return nil
-	}
-	return t.Environments[sess.EnvName]
 }
 
 func (t *SessionTree) Children(sessionID string) []*Session {
@@ -57,4 +38,172 @@ func (t *SessionTree) Children(sessionID string) []*Session {
 		}
 	}
 	return result
+}
+
+// GetInheritedHeaders returns headers merged from all ancestors (parent -> grandparent -> ...)
+func (t *SessionTree) GetInheritedHeaders(sessionID string) map[string]string {
+	result := make(map[string]string)
+	sess := t.Sessions[sessionID]
+	if sess == nil {
+		return result
+	}
+
+	// Collect headers from all ancestors
+	visited := make(map[string]bool)
+	current := sess
+	for current != nil && current.ParentID != "" && !visited[current.ParentID] {
+		visited[current.ParentID] = true
+		parent := t.Sessions[current.ParentID]
+		if parent == nil {
+			break
+		}
+		// Merge parent headers (ancestors override earlier ones)
+		for k, v := range parent.Headers {
+			result[k] = v
+		}
+		current = parent
+	}
+
+	return result
+}
+
+// GetInheritedVars returns variables merged from all ancestors
+func (t *SessionTree) GetInheritedVars(sessionID string) Variables {
+	result := make(Variables)
+	sess := t.Sessions[sessionID]
+	if sess == nil {
+		return result
+	}
+
+	visited := make(map[string]bool)
+	current := sess
+	for current != nil && current.ParentID != "" && !visited[current.ParentID] {
+		visited[current.ParentID] = true
+		parent := t.Sessions[current.ParentID]
+		if parent == nil {
+			break
+		}
+		for k, v := range parent.Vars {
+			if _, exists := result[k]; !exists {
+				result[k] = v
+			}
+		}
+		current = parent
+	}
+
+	return result
+}
+
+// GetInheritedAuth returns the first auth found in the ancestor chain
+func (t *SessionTree) GetInheritedAuth(sessionID string) *AuthConfig {
+	sess := t.Sessions[sessionID]
+	if sess == nil {
+		return nil
+	}
+
+	visited := make(map[string]bool)
+	current := sess
+	for current != nil && !visited[current.ID] {
+		if current.Auth != nil {
+			return current.Auth
+		}
+		visited[current.ID] = true
+		if current.ParentID == "" {
+			break
+		}
+		current = t.Sessions[current.ParentID]
+	}
+
+	return nil
+}
+
+// GetInheritedBaseURL returns the first baseURL found in the ancestor chain (from vars)
+func (t *SessionTree) GetInheritedBaseURL(sessionID string) string {
+	sess := t.Sessions[sessionID]
+	if sess == nil {
+		return ""
+	}
+
+	visited := make(map[string]bool)
+	current := sess
+	for current != nil && !visited[current.ID] {
+		if v, ok := current.Vars["baseURL"]; ok && v.Value != nil {
+			if s, ok := v.Value.(string); ok && s != "" {
+				return s
+			}
+		}
+		visited[current.ID] = true
+		if current.ParentID == "" {
+			break
+		}
+		current = t.Sessions[current.ParentID]
+	}
+
+	return ""
+}
+
+// GetEffectiveHeaders returns headers with inheritance (session + ancestors)
+func (t *SessionTree) GetEffectiveHeaders(sessionID string) map[string]string {
+	inherited := t.GetInheritedHeaders(sessionID)
+	sess := t.Sessions[sessionID]
+	if sess == nil {
+		return inherited
+	}
+
+	// Session headers override inherited
+	for k, v := range sess.Headers {
+		inherited[k] = v
+	}
+
+	return inherited
+}
+
+// GetEffectiveVars returns variables with inheritance (session + ancestors)
+func (t *SessionTree) GetEffectiveVars(sessionID string) Variables {
+	inherited := t.GetInheritedVars(sessionID)
+	sess := t.Sessions[sessionID]
+	if sess == nil {
+		return inherited
+	}
+
+	// Session vars override inherited
+	for k, v := range sess.Vars {
+		inherited[k] = v
+	}
+
+	return inherited
+}
+
+// GetEffectiveAuthURL returns the auth URL for a session (from vars, inherited, or BaseURL)
+func (t *SessionTree) GetEffectiveAuthURL(sessionID string) string {
+	sess := t.Sessions[sessionID]
+	if sess == nil {
+		return ""
+	}
+
+	// Use session's authURL if set in vars
+	if v, ok := sess.Vars["authURL"]; ok && v.Value != nil {
+		if s, ok := v.Value.(string); ok && s != "" {
+			return s
+		}
+	}
+
+	// Fall back to inherited authURL
+	visited := make(map[string]bool)
+	current := sess
+	for current != nil && !visited[current.ID] {
+		if v, ok := current.Vars["authURL"]; ok && v.Value != nil {
+			if s, ok := v.Value.(string); ok && s != "" {
+				return s
+			}
+		}
+		visited[current.ID] = true
+		if current.ParentID == "" {
+			break
+		}
+		current = t.Sessions[current.ParentID]
+	}
+
+	// Fall back to BaseURL
+	return t.GetInheritedBaseURL(sessionID)
 }

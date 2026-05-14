@@ -5,16 +5,37 @@ import (
 	"time"
 )
 
+type AuthConfig struct {
+	Type string // "basic", "token", "oauth"
+
+	// Basic auth
+	Username string
+	Password string
+
+	// Token auth
+	Token      string
+	TokenType  string // "Bearer", "Token", or custom
+	HeaderName string // default: "Authorization"
+
+	// OAuth
+	ClientID     string
+	ClientSecret string
+	TokenURL     string
+	AccessToken  string
+	RefreshToken string
+	ExpiresAt    time.Time
+}
+
 type Session struct {
-	ID              string
-	Name            string
-	EnvName         string
-	ParentID        string
-	Requests        []*Request
-	HeaderOverrides map[string]string
-	Vars            Variables
-	OpenAPISpec     *OpenAPISpec // stored as pointer for JSON serialization
-	CreatedAt       time.Time
+	ID          string
+	Name        string
+	ParentID    string
+	Requests    []*Request
+	Headers     map[string]string // per-session headers
+	Vars        Variables
+	OpenAPISpec *OpenAPISpec // stored as pointer for JSON serialization
+	Auth        *AuthConfig  // session-level auth
+	CreatedAt   time.Time
 }
 
 type OpenAPISpec struct {
@@ -63,4 +84,55 @@ func (s *Session) RemoveRequest(id string) bool {
 		}
 	}
 	return false
+}
+
+func (s *Session) Clone() *Session {
+	// Clone headers
+	headers := make(map[string]string)
+	for k, v := range s.Headers {
+		headers[k] = v
+	}
+
+	// Clone vars
+	vars := make(Variables)
+	for k, v := range s.Vars {
+		vars[k] = v
+	}
+
+	// Clone requests
+	requests := make([]*Request, len(s.Requests))
+	for i, r := range s.Requests {
+		requests[i] = r.Clone()
+	}
+
+	// Clone auth
+	var auth *AuthConfig
+	if s.Auth != nil {
+		auth = &AuthConfig{
+			Type:         s.Auth.Type,
+			Username:     s.Auth.Username,
+			Password:     s.Auth.Password,
+			Token:        s.Auth.Token,
+			TokenType:    s.Auth.TokenType,
+			HeaderName:   s.Auth.HeaderName,
+			ClientID:     s.Auth.ClientID,
+			ClientSecret: s.Auth.ClientSecret,
+			TokenURL:     s.Auth.TokenURL,
+			AccessToken:  s.Auth.AccessToken,
+			RefreshToken: s.Auth.RefreshToken,
+			ExpiresAt:    s.Auth.ExpiresAt,
+		}
+	}
+
+	return &Session{
+		ID:          s.ID,
+		Name:        s.Name,
+		ParentID:    s.ParentID,
+		Requests:    requests,
+		Headers:     headers,
+		Vars:        vars,
+		OpenAPISpec: s.OpenAPISpec,
+		Auth:        auth,
+		CreatedAt:   s.CreatedAt,
+	}
 }

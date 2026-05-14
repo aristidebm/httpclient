@@ -14,22 +14,19 @@ type BrunoExporter struct{}
 
 func (e *BrunoExporter) Format() string { return "bruno" }
 
-func (e *BrunoExporter) Export(session *model.Session, env *model.Environment) ([]byte, error) {
-	// For now, just print what would be exported
-	// Full directory export would need to be handled by the command
+func (e *BrunoExporter) Export(session *model.Session, tree *model.SessionTree) ([]byte, error) {
 	var output strings.Builder
 
-	output.WriteString("# Bruno Export\n\n")
+	output.WriteString("# Bruno Export\n")
 	output.WriteString("Session: ")
 	output.WriteString(session.Name)
 	output.WriteString("\n")
 
-	if env != nil {
-		output.WriteString("Environment: ")
-		output.WriteString(env.Name)
-		output.WriteString(" (")
-		output.WriteString(env.BaseURL)
-		output.WriteString(")\n")
+	baseURL := tree.GetInheritedBaseURL(session.ID)
+	if baseURL != "" {
+		output.WriteString("BaseURL: ")
+		output.WriteString(baseURL)
+		output.WriteString("\n")
 	}
 
 	output.WriteString("\nRequests:\n")
@@ -45,7 +42,7 @@ func (e *BrunoExporter) Export(session *model.Session, env *model.Environment) (
 	return []byte(output.String()), nil
 }
 
-func ExportBrunoDir(session *model.Session, env *model.Environment, outDir string) error {
+func ExportBrunoDir(session *model.Session, tree *model.SessionTree, outDir string) error {
 	// Create directory
 	sessionDir := filepath.Join(outDir, session.Name)
 	if err := os.MkdirAll(sessionDir, 0755); err != nil {
@@ -64,21 +61,20 @@ func ExportBrunoDir(session *model.Session, env *model.Environment, outDir strin
 	collectionJSON, _ := json.MarshalIndent(collection, "", "  ")
 	os.WriteFile(filepath.Join(sessionDir, "bruno.json"), collectionJSON, 0644)
 
-	// Create environments directory
-	envDir := filepath.Join(sessionDir, "environments")
-	os.MkdirAll(envDir, 0755)
+	// Create variables directory
+	varDir := filepath.Join(sessionDir, "variables")
+	os.MkdirAll(varDir, 0755)
 
-	if env != nil {
-		// Create environment file
-		var envContent strings.Builder
-		if env.BaseURL != "" {
-			fmt.Fprintf(&envContent, "vars {\n  baseUrl: %s\n}\n", env.BaseURL)
-		}
-		for k, v := range env.Vars {
-			fmt.Fprintf(&envContent, "vars {\n  %s: %v\n}\n", k, v)
-		}
-		os.WriteFile(filepath.Join(envDir, env.Name+".bru"), []byte(envContent.String()), 0644)
+	// Create variables file using session data
+	var varsContent strings.Builder
+	baseURL := tree.GetInheritedBaseURL(session.ID)
+	if baseURL != "" {
+		fmt.Fprintf(&varsContent, "vars {\n  baseUrl: %s\n}\n", baseURL)
 	}
+	for k, v := range tree.GetEffectiveVars(session.ID) {
+		fmt.Fprintf(&varsContent, "vars {\n  %s: %v\n}\n", k, v.Value)
+	}
+	os.WriteFile(filepath.Join(varDir, session.Name+".bru"), []byte(varsContent.String()), 0644)
 
 	// Create request files
 	for _, req := range session.Requests {
@@ -96,7 +92,7 @@ func ExportBrunoDir(session *model.Session, env *model.Environment, outDir strin
 		fmt.Fprintf(&content, "meta {\n  name: %s\n  type: http\n  seq: %d\n}\n\n", metaName, 1)
 
 		url := req.URL
-		if env != nil && !strings.HasPrefix(url, "http") {
+		if !strings.HasPrefix(url, "http") {
 			url = "{{baseUrl}}/" + strings.TrimLeft(url, "/")
 		}
 

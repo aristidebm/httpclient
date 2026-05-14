@@ -10,32 +10,21 @@ func BuildPrompt(ctx *ShellContext) string {
 		return color.BlueString("[httpclient] › ")
 	}
 
-	env := ctx.Tree.CurrentEnv()
-	if env == nil {
-		return color.GreenString("[httpclient] › ")
-	}
-
-	user := ""
-	if u, ok := env.Vars["user"]; ok {
-		user = toString(u)
-	}
-	if user == "" {
-		user = "user"
-	}
-
-	envPart := color.New(color.FgCyan).Sprintf("%s@%s", user, env.Name)
 	sessionPart := color.New(color.FgGreen).Sprint(session.Name)
+
+	// Show parent if this is a child session
+	if session.ParentID != "" {
+		if parent := ctx.Tree.Sessions[session.ParentID]; parent != nil {
+			sessionPart = sessionPart + "@" + color.New(color.FgCyan).Sprint(parent.Name)
+		}
+	}
+
+	// Show auth indicator if session or inherited auth is set
+	if session.Auth != nil || ctx.Tree.GetInheritedAuth(session.ID) != nil {
+		sessionPart += color.New(color.FgYellow).Sprint(" [A]")
+	}
+
 	prompt := color.New(color.FgHiBlack).Sprint("› ")
 
-	// return "[httpclient : " + httpclient + " : " + envPart + " : " + sessionPart + "] " + prompt
-	return "[" + envPart + " : " + sessionPart + "] " + prompt
-}
-
-func toString(v any) string {
-	switch val := v.(type) {
-	case string:
-		return val
-	default:
-		return ""
-	}
+	return "[" + sessionPart + "] " + prompt
 }

@@ -140,9 +140,6 @@ func TestLoadConfigDefault(t *testing.T) {
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
 
-	if cfg.DefaultEnv != "local" {
-		t.Errorf("expected default_env 'local', got %s", cfg.DefaultEnv)
-	}
 	if cfg.HistoryFile == "" {
 		t.Error("expected history_file to be set")
 	}
@@ -161,7 +158,6 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	}()
 
 	cfg := &Config{
-		DefaultEnv:    "beta",
 		DefaultEditor: "nano",
 		HistoryFile:   "~/.httpclient/history",
 	}
@@ -176,9 +172,6 @@ func TestSaveAndLoadConfig(t *testing.T) {
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
 
-	if loaded.DefaultEnv != "beta" {
-		t.Errorf("expected DefaultEnv 'beta', got %s", loaded.DefaultEnv)
-	}
 	if loaded.DefaultEditor != "nano" {
 		t.Errorf("expected DefaultEditor 'nano', got %s", loaded.DefaultEditor)
 	}
